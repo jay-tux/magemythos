@@ -87,6 +87,7 @@ compose.desktop {
             targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
             packageName = "org.jaytux.magemytho"
             packageVersion = "1.0.0"
+            modules("jdk.unsupported")
         }
     }
 }
