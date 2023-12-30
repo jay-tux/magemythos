@@ -1,5 +1,6 @@
 package parser.ui
 
+import Library
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -43,34 +44,10 @@ enum class Selection(val disp: String) {
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun DebugView(strings: Map<String, String>, tree: DeclarationSet) = Row {
+fun DebugView(tree: Library) = Row {
     Column(Modifier.weight(0.5f)) {
-        Text("Strings from all string files:")
-        LazyColumn(Modifier.weight(0.33f)) {
-            items(strings.entries.toList()) {
-                var opened by remember { mutableStateOf(false) }
-                Column {
-                    Row(Modifier.onClick { opened = !opened }) {
-                        Icon(
-                            if (opened) Icons.Filled.KeyboardArrowDown else Icons.Filled.KeyboardArrowRight,
-                            ""
-                        )
-                        Text(it.key)
-                    }
-
-                    if (opened) {
-                        Row {
-                            Spacer(Modifier.width(10.dp))
-                            Text(it.value)
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    Column(Modifier.weight(0.5f)) {
-        Text("Types in AST (source: ${tree.source}, dependencies: ${tree.deps.joinToString(", ")}):")
+        Text("Types in (joined) AST (resolved files: ${tree.resolved.joinToString(", ")}):")
+        Text(" -> Sources: ${tree.sources.joinToString(", ")}")
         var current by remember { mutableStateOf(Selection.CLASS) }
         LazyRow {
             items(Selection.entries) {
@@ -82,23 +59,23 @@ fun DebugView(strings: Map<String, String>, tree: DeclarationSet) = Row {
         }
 
         when(current) {
-            Selection.CLASS -> classView(tree.classes)
-            Selection.SUBCLASS -> subclassView(tree.subClasses)
-            Selection.RACE -> raceView(tree.races)
-            Selection.SUBRACE -> subRaceView(tree.subRaces)
-            Selection.ITEM -> itemView(tree.items)
-            Selection.SPELL -> spellView(tree.spells)
-            Selection.BACKGROUND -> backgroundView(tree.backgrounds)
-            Selection.ABILITY -> abilityView(tree.abilities)
-            Selection.SKILL -> skillView(tree.skills)
+            Selection.CLASS -> classView(tree.classes.values)
+            Selection.SUBCLASS -> subclassView(tree.subClasses.values)
+            Selection.RACE -> raceView(tree.races.values)
+            Selection.SUBRACE -> subRaceView(tree.subRaces.values)
+            Selection.ITEM -> itemView(tree.items.values)
+            Selection.SPELL -> spellView(tree.spells.values)
+            Selection.BACKGROUND -> backgroundView(tree.backgrounds.values)
+            Selection.ABILITY -> abilityView(tree.abilities.values)
+            Selection.SKILL -> skillView(tree.skills.values)
         }
     }
 }
 
 @Composable
-fun classView(classes: List<ClassDeclaration>) {
+fun classView(classes: Collection<ClassDeclaration>) {
     LazyColumn {
-        items(classes) {
+        items(classes.toList()) {
             Text("Class: ${it.name} (${it.displayName})")
             Row {
                 Spacer(Modifier.width(10.dp))
@@ -113,9 +90,9 @@ fun classView(classes: List<ClassDeclaration>) {
 }
 
 @Composable
-fun subclassView(subClasses: List<SubClassDeclaration>) {
+fun subclassView(subClasses: Collection<SubClassDeclaration>) {
     LazyColumn {
-        items(subClasses) {
+        items(subClasses.toList()) {
             Text("Sub-class: ${it.name} (${it.displayName})")
             Row {
                 Spacer(Modifier.width(10.dp))
@@ -134,9 +111,9 @@ fun subclassView(subClasses: List<SubClassDeclaration>) {
 }
 
 @Composable
-fun raceView(races: List<RaceDeclaration>) {
+fun raceView(races: Collection<RaceDeclaration>) {
     LazyColumn {
-        items(races) {
+        items(races.toList()) {
             Text("Race: ${it.name} (${it.displayName})")
             Row {
                 Spacer(Modifier.width(10.dp))
@@ -151,9 +128,9 @@ fun raceView(races: List<RaceDeclaration>) {
 }
 
 @Composable
-fun subRaceView(subClasses: List<SubRaceDeclaration>) {
+fun subRaceView(subClasses: Collection<SubRaceDeclaration>) {
     LazyColumn {
-        items(subClasses) {
+        items(subClasses.toList()) {
             Text("Sub-race: ${it.name} (${it.displayName})")
             Row {
                 Spacer(Modifier.width(10.dp))
@@ -172,9 +149,9 @@ fun subRaceView(subClasses: List<SubRaceDeclaration>) {
 }
 
 @Composable
-fun itemView(items: List<ItemDeclaration>) {
+fun itemView(items: Collection<ItemDeclaration>) {
     LazyColumn {
-        items(items) {
+        items(items.toList()) {
             Text("Item: ${it.name} (${it.displayName})")
             Row {
                 Spacer(Modifier.width(10.dp))
@@ -189,9 +166,9 @@ fun itemView(items: List<ItemDeclaration>) {
 }
 
 @Composable
-fun spellView(spells: List<SpellDeclaration>) {
+fun spellView(spells: Collection<SpellDeclaration>) {
     LazyColumn {
-        items(spells) {
+        items(spells.toList()) {
             Text("Spell: ${it.name} (${it.displayName})")
             Row {
                 Spacer(Modifier.width(10.dp))
@@ -206,9 +183,9 @@ fun spellView(spells: List<SpellDeclaration>) {
 }
 
 @Composable
-fun backgroundView(backgrounds: List<BackgroundDeclaration>) {
+fun backgroundView(backgrounds: Collection<BackgroundDeclaration>) {
     LazyColumn {
-        items(backgrounds) {
+        items(backgrounds.toList()) {
             Text("Background: ${it.name} (${it.displayName})")
             Row {
                 Spacer(Modifier.width(10.dp))
@@ -223,9 +200,9 @@ fun backgroundView(backgrounds: List<BackgroundDeclaration>) {
 }
 
 @Composable
-fun abilityView(abilities: List<AbilityDeclaration>) {
+fun abilityView(abilities: Collection<AbilityDeclaration>) {
     LazyColumn {
-        items(abilities) {
+        items(abilities.toList()) {
             Text("Ability: ${it.name} (${it.displayName})")
             Row {
                 Spacer(Modifier.width(10.dp))
@@ -240,9 +217,9 @@ fun abilityView(abilities: List<AbilityDeclaration>) {
 }
 
 @Composable
-fun skillView(skills: List<SkillDeclaration>) {
+fun skillView(skills: Collection<SkillDeclaration>) {
     LazyColumn {
-        items(skills) {
+        items(skills.toList()) {
             Text("Skill: ${it.name} (${it.displayName})")
             Row {
                 Spacer(Modifier.width(10.dp))

@@ -16,3 +16,14 @@ fun String.relativeTo(other: String): String {
 }
 
 fun <T> List<T>.notLast() = this.subList(0, this.size - 1)
+
+fun String.upOneDir(): String {
+    val temp = this.split("/")
+    val path = temp.subList(0, temp.size - 2).joinToString("/")
+    return "$path/${temp.last()}"
+}
+
+fun String.toPathAndFile(): Pair<String, String> {
+    val parts = this.split("/")
+    return parts.notLast().joinToString("/") to parts.last()
+}

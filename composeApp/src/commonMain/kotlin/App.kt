@@ -1,15 +1,21 @@
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.AlertDialog
 import androidx.compose.material.Button
+import androidx.compose.material.Icon
 import androidx.compose.material.MaterialTheme
 import androidx.compose.material.Text
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowRight
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -21,43 +27,68 @@ import com.darkrockstudios.libraries.mpfilepicker.FilePicker
 import org.jetbrains.compose.resources.ExperimentalResourceApi
 import org.jetbrains.compose.resources.painterResource
 import parser.ast.DeclarationSet
+import parser.ast.notLast
 import parser.ui.DebugView
 
 @OptIn(ExperimentalResourceApi::class)
 @Composable
-fun App() {
+fun App(cache: Cache) {
     MaterialTheme {
         var showPicker by remember { mutableStateOf(false) }
-        var ast by remember { mutableStateOf<DeclarationSet?>(null) }
-        var strings by remember { mutableStateOf(mapOf<String, String>()) }
+        var lib by remember { mutableStateOf(Library.empty()) }
         var error by remember { mutableStateOf<Exception?>(null) }
 
         Column {
-            ast?.let {
-                Box(Modifier.weight(0.8f)) {
-                    DebugView(strings, it)
-                }
+            Box(Modifier.weight(0.8f)) {
+                    DebugView(lib)
             }
 
             Box(Modifier.weight(0.2f).fillMaxSize()) {
-                Button({ showPicker = true }, Modifier.align(Alignment.Center)) {
-                    Text("Load *.mm file")
+                Column(Modifier.align(Alignment.Center)) {
+                    Button({ showPicker = true }) {
+                        Text("Load *.mm file")
+                    }
+                    Button({ lib = Library.empty() }) {
+                        Text("Reset library")
+                    }
                 }
             }
         }
 
         error?.let {
             AlertDialog(
-                { error = null },
-                buttons = @Composable { Button({ error = null }) { Text("OK") } },
-                title = @Composable { Text("Parsing error") },
+                { lib = Library.empty(); error = null },
+                buttons = @Composable {
+                    Column(Modifier.fillMaxWidth()){
+                        Button({ lib = Library.empty(); error = null }) { Text("OK") }
+                    }
+                },
+                title = @Composable {
+                    Column(Modifier.fillMaxWidth()){
+                        Text("Parsing error", Modifier.align(Alignment.CenterHorizontally))
+                    }
+                },
                 text = @Composable {
                     Column {
+                        var opened by remember { mutableStateOf(false) }
                         Text(it.message ?: "(Unknown error)")
                         Text(" -> ${it::class.simpleName}")
-                        LazyColumn {
-                            items(it.stackTrace.toList()) { e ->
-                                Text(e.toString())
+                        it.cause?.let {
+                            Text(" -> Caused by ${it::class.simpleName} (${it.message ?: "(???)"})")
+                        }
+
+                        Row(Modifier.clickable { opened = !opened }) {
+                            Icon(
+                                if(opened) Icons.Default.KeyboardArrowDown else Icons.Default.KeyboardArrowRight,
+                                ""
+                            )
+                            Text("Stack trace")
+                        }
+                        if(opened) {
+                            LazyColumn {
+                                items(it.stackTrace.toList()) { e ->
+                                    Text(e.toString())
+                                }
                             }
                         }
                     }
@@ -65,15 +96,16 @@ fun App() {
             )
         }
 
-        FilePicker(showPicker, fileExtensions = listOf("mm")) {
+        FilePicker(showPicker, initialDirectory = cache.lastDir(), fileExtensions = listOf("mm")) {
             it?.let { f ->
                 showPicker = false
+                cache.updateLastDir(f.path.split('/').notLast().joinToString("/"))
                 try {
-                    val intermediate = DataLoader.loadFrom(f.path)
-                    strings = intermediate.first
-                    ast = intermediate.second
+                    lib = Library.loadInto(f.path, lib)
+                    lib.verify()
                 }
                 catch (e: Exception) {
+                    lib = Library.empty()
                     error = e
                 }
             }

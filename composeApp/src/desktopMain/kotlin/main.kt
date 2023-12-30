@@ -5,12 +5,9 @@ import androidx.compose.ui.window.application
 
 fun main() = application {
     Window(onCloseRequest = ::exitApplication, title = "MageMythos") {
-        App()
+        App(Cache(
+            System.getProperty("user.home") + "/.mageMythos/",
+            System.getProperty("user.home")
+        ))
     }
-}
-
-@Preview
-@Composable
-fun AppDesktopPreview() {
-    App()
 }

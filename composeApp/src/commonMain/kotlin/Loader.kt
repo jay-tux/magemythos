@@ -1,6 +1,9 @@
+import org.antlr.v4.runtime.BaseErrorListener
 import org.antlr.v4.runtime.CharStreams
 import org.antlr.v4.runtime.CommonTokenStream
 import org.antlr.v4.runtime.ParserRuleContext
+import org.antlr.v4.runtime.RecognitionException
+import org.antlr.v4.runtime.Recognizer
 import parser.ast.AbilityDeclaration
 import parser.ast.AstNode
 import parser.ast.BackgroundDeclaration
@@ -22,16 +25,27 @@ import parser.ast.SubRaceDeclaration
 import parser.ast.TypedListLiteral
 import parser.ast.merge
 import parser.ast.nonNull
+import parser.ast.notLast
 import parser.ast.relativeTo
+import parser.ast.toPathAndFile
 import parser.ast.toPos
+import parser.ast.upOneDir
 import parser.mm.MMBaseVisitor
 import parser.mm.MMLexer
 import parser.mm.MMParser
 import java.io.File
+import java.io.FileNotFoundException
+import java.nio.file.Path
 
 inline fun <reified T> nonNull(t: T?): T = t ?: throw ParseError("Unexpected null node (expected a node of type ${T::class.simpleName}).")
 inline fun <reified T, R> nonNull(t: T?, f: (T) -> R): R = t?.let { f(it) } ?: throw ParseError("Unexpected null node (expected a node of type ${T::class.simpleName}).")
 inline fun <reified T: AstNode> require(t: AstNode): T = if(t is T) (t as T) else throw ParseError("Unexpected node type: ${t::class.simpleName}, expected ${T::class.simpleName}")
+
+class ParseErrorListener : BaseErrorListener() {
+    override fun syntaxError(recognizer: Recognizer<*, *>?, offendingSymbol: Any?, line: Int, charPositionInLine: Int, msg: String?, e: RecognitionException?) {
+        throw ParseError("Syntax error at $line:$charPositionInLine: $msg")
+    }
+}
 
 class StringsLoader : MMBaseVisitor<Map<String, String>>() {
     override fun visitStrings(ctx: MMParser.StringsContext?) = ctx?.singleString()?.map { s ->
@@ -46,10 +60,18 @@ class StringsLoader : MMBaseVisitor<Map<String, String>>() {
 
     companion object {
         fun loadFrom(file: String): Map<String, String> {
+            val error = ParseErrorListener()
+
             val input = File(file).inputStream()
             val lexer = MMLexer(CharStreams.fromStream(input))
+            lexer.removeErrorListeners()
+            lexer.addErrorListener(error)
+
             val tokens = CommonTokenStream(lexer)
             val parser = MMParser(tokens)
+            parser.removeErrorListeners()
+            parser.addErrorListener(error)
+
             val tree = parser.strings()
             val loader = StringsLoader()
             return loader.visitStrings(tree)
@@ -57,7 +79,10 @@ class StringsLoader : MMBaseVisitor<Map<String, String>>() {
     }
 }
 
-class DataLoader(val file: String) : MMBaseVisitor<AstNode>() {
+data class LoaderResult(val strings: Map<String, String>, val tree: DeclarationSet)
+
+class DataLoader(target: String) : MMBaseVisitor<AstNode>() {
+    val file = Path.of(target).toFile().canonicalPath
     var strings: Map<String, String> = mapOf()
         private set
 
@@ -68,18 +93,22 @@ class DataLoader(val file: String) : MMBaseVisitor<AstNode>() {
         require<T>(visit(it.getChild(0)))
     }
 
-    private fun visitDesc(ctx: MMParser.DescriptionContext?) = require<StringLiteral>(visit(ctx)).value
-
     private fun visitDesc(ctx: MMParser.DescriptionContext?, base: String): String {
-        if(ctx != null) return visitDesc(ctx)
-        if(enableAutoDescr) return strings[base + "_descr"] ?: throw ParseError("Unknown string reference: ${base}_descr")
-        throw ParseError("No description given for $base. Perhaps you forgot to `enable \$AUTO_DESCR;`?")
+        return ctx?.let {
+            require<StringLiteral>(visit(it)).value
+        } ?: run {
+            if(enableAutoDescr) return strings[base + "_descr"] ?: throw ParseError("Unknown string reference: ${base}_descr")
+            throw ParseError("No description given for $base. Perhaps you forgot to `enable \$AUTO_DESCR;`?")
+        }
     }
 
     private fun visitName(ctx: MMParser.DescriptionContext?, base: String): String {
-        if(ctx != null) return visitDesc(ctx)
-        if(enableAutoDescr) return strings[base + "_name"] ?: throw ParseError("Unknown string reference: ${base}_name")
-        throw ParseError("No display name given for $base. Perhaps you forgot to `enable \$AUTO_NAME;`?")
+        return ctx?.let {
+            require<StringLiteral>(visit(it)).value
+        } ?: run {
+            if(enableAutoName) return strings[base + "_name"] ?: throw ParseError("Unknown string reference: ${base}_name")
+            throw ParseError("No description given for $base. Perhaps you forgot to `enable \$AUTO_NAME;`?")
+        }
     }
 
     override fun visitMageProg(ctx: MMParser.MageProgContext?): AstNode = nonNull(ctx) { c ->
@@ -90,10 +119,7 @@ class DataLoader(val file: String) : MMBaseVisitor<AstNode>() {
 
         strings = h.strFiles.map {
             val target = it.relativeTo(file)
-            println(" -> Loading strings from '$target'")
-            val res = StringsLoader.loadFrom(target)
-            println("    -> Loaded ${res.size} strings.")
-            res
+            StringsLoader.loadFrom(target)
         }.merge()
         println(" -> Total of ${strings.size} strings loaded.")
 
@@ -255,31 +281,50 @@ class DataLoader(val file: String) : MMBaseVisitor<AstNode>() {
     }
 
     override fun visitStringDescr(ctx: MMParser.StringDescrContext?): AstNode = nonNull(ctx) {
-        println("Got string literal '${it.STRING_LIT().text}'")
         StringLiteral(it.STRING_LIT().text, it.toPos(file))
     }
 
     override fun visitRefDescr(ctx: MMParser.RefDescrContext?): AstNode = nonNull(ctx) {
         val n = it.name?.text ?: throw ParseError("Unexpected null reference string.")
         strings[n]?.let { s ->
-            println("    -> Looked up strings.$n -> $s")
             StringLiteral(s, it.toPos(file))
         } ?: throw ParseError("Unknown reference string: $n")
     }
 
     companion object {
-        fun loadFrom(file: String): Pair<Map<String, String>, DeclarationSet> {
+        fun loadFrom(file: String): LoaderResult {
+            val error = ParseErrorListener()
+
             val input = File(file).inputStream()
             val lexer = MMLexer(CharStreams.fromStream(input))
+            lexer.removeErrorListeners()
+            lexer.addErrorListener(error)
+
             val tokens = CommonTokenStream(lexer)
             val parser = MMParser(tokens)
+            parser.removeErrorListeners()
+            parser.addErrorListener(error)
+
             val tree = parser.mageProg()
             val loader = DataLoader(file)
 
             val res = loader.visitMageProg(tree) as DeclarationSet
             val str = loader.strings
 
-            return str to res
+            return LoaderResult(str, res)
+        }
+
+        fun attemptResolve(file: String, depFrom: String): String? {
+            var curBase = depFrom.toPathAndFile().first
+            println("     -> Attempting to load $curBase/$file...")
+            var f = File("$curBase/$file")
+            while(!f.exists() && curBase.isNotEmpty()) {
+                curBase = curBase.split('/').notLast().joinToString("/")
+                println("     -> Not found, attempting with $curBase/$file...")
+                f = File("$curBase/$file")
+            }
+            return if(!f.exists()) null
+            else f.canonicalPath
         }
     }
 }
