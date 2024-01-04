@@ -10,8 +10,13 @@ import parser.ast.BackgroundDeclaration
 import parser.ast.ClassDeclaration
 import parser.ast.Declaration
 import parser.ast.DeclarationSet
+import parser.ast.Dice
+import parser.ast.DiceLiteral
+import parser.ast.DistanceLiteral
 import parser.ast.EmptyNode
+import parser.ast.FloatLiteral
 import parser.ast.HeaderNode
+import parser.ast.IntLiteral
 import parser.ast.ItemDeclaration
 import parser.ast.Literal
 import parser.ast.ParseError
@@ -23,6 +28,8 @@ import parser.ast.StringLiteral
 import parser.ast.SubClassDeclaration
 import parser.ast.SubRaceDeclaration
 import parser.ast.TypedListLiteral
+import parser.ast.WeightLiteral
+import parser.ast.asIntIfIsInt
 import parser.ast.merge
 import parser.ast.nonNull
 import parser.ast.notLast
@@ -43,7 +50,7 @@ inline fun <reified T: AstNode> require(t: AstNode): T = if(t is T) (t as T) els
 
 class ParseErrorListener : BaseErrorListener() {
     override fun syntaxError(recognizer: Recognizer<*, *>?, offendingSymbol: Any?, line: Int, charPositionInLine: Int, msg: String?, e: RecognitionException?) {
-        throw ParseError("Syntax error at $line:$charPositionInLine: $msg")
+        throw ParseError("Syntax error at $line:$charPositionInLine: $msg (offending token: ${e?.offendingToken?.text})")
     }
 }
 
@@ -136,8 +143,8 @@ class DataLoader(target: String) : MMBaseVisitor<AstNode>() {
         val skills = mutableListOf<SkillDeclaration>()
 
         nonNull(c.topLevel()).map {
-            visit(it) as Declaration
-        }.forEach {
+            visit(it) as? Declaration
+        }.filterNotNull().forEach {
             when(it) {
                 is ClassDeclaration -> classes.add(it)
                 is RaceDeclaration -> races.add(it)
@@ -192,6 +199,7 @@ class DataLoader(target: String) : MMBaseVisitor<AstNode>() {
         return EmptyNode(ctx?.toPos(file) ?: Pos("???", -1, -1))
     }
 
+    //region Declarations
     override fun visitDndClass(ctx: MMParser.DndClassContext?): AstNode = visitThrough<ClassDeclaration>(ctx)
     override fun visitDndRace(ctx: MMParser.DndRaceContext?): AstNode = visitThrough<RaceDeclaration>(ctx)
     override fun visitDndSubClass(ctx: MMParser.DndSubClassContext?): AstNode = visitThrough<SubClassDeclaration>(ctx)
@@ -279,7 +287,47 @@ class DataLoader(target: String) : MMBaseVisitor<AstNode>() {
             )
         } ?: throw ParseError("No skill name given.")
     }
+    //endregion
 
+    //region Expressions
+    //endregion
+
+    //region Literals
+    override fun visitNumberLit(ctx: MMParser.NumberLitContext?): AstNode = nonNull(ctx) {
+        val temp = it.NUMBER().text.toFloatOrNull()
+            ?: throw ParseError("Invalid number literal: ${it.NUMBER().text} at ${it.toPos(file)}")
+
+        temp.asIntIfIsInt()?.let { i -> IntLiteral(i, it.toPos(file)) } ?: FloatLiteral(temp, it.toPos(file))
+    }
+
+    override fun visitRawDiceLit(ctx: MMParser.RawDiceLitContext?): AstNode = nonNull(ctx) {
+        val temp = it.DICE_LIT().text.split('d', 'D').map { s ->
+            s.toIntOrNull() ?: throw ParseError("Invalid dice literal: ${it.DICE_LIT().text} at ${it.toPos(file)}")
+        }
+
+        DiceLiteral(Dice(temp[0], temp[1]), it.toPos(file))
+    }
+
+    override fun visitDistanceLit(ctx: MMParser.DistanceLitContext?): AstNode = nonNull(ctx) {
+        val temp = it.DIST_LIT().text.substring(0, it.DIST_LIT().text.length - 2).toFloatOrNull()
+            ?: throw ParseError("Invalid distance literal: ${it.DIST_LIT().text} at ${it.toPos(file)}")
+
+        DistanceLiteral(temp, it.toPos(file))
+    }
+
+    override fun visitWeightLit(ctx: MMParser.WeightLitContext?): AstNode = nonNull(ctx) {
+        val temp = it.WEIGHT_LIT().text.substring(0, it.WEIGHT_LIT().text.length - 2).toFloatOrNull()
+            ?: throw ParseError("Invalid weight literal: ${it.WEIGHT_LIT().text} at ${it.toPos(file)}")
+
+        WeightLiteral(temp, it.toPos(file))
+    }
+
+    override fun visitStringLit(ctx: MMParser.StringLitContext?): AstNode = nonNull(ctx) {
+        visit(it.description())
+    }
+    //endregion
+
+    //region Descriptions
     override fun visitStringDescr(ctx: MMParser.StringDescrContext?): AstNode = nonNull(ctx) {
         StringLiteral(it.STRING_LIT().text, it.toPos(file))
     }
@@ -290,6 +338,7 @@ class DataLoader(target: String) : MMBaseVisitor<AstNode>() {
             StringLiteral(s, it.toPos(file))
         } ?: throw ParseError("Unknown reference string: $n")
     }
+    //endregion
 
     companion object {
         fun loadFrom(file: String): LoaderResult {

@@ -151,6 +151,46 @@ interface MMVisitor<T> : ParseTreeVisitor<T> {
     fun visitDndSkill(ctx: MMParser.DndSkillContext?): T
 
     /**
+     * Visit a parse tree produced by the `dndTrait`
+     * labeled alternative in [MMParser.topLevel].
+     * @param ctx the parse tree
+     * @return the visitor result
+     */
+    fun visitDndTrait(ctx: MMParser.DndTraitContext?): T
+
+    /**
+     * Visit a parse tree produced by the `dndItemTrait`
+     * labeled alternative in [MMParser.topLevel].
+     * @param ctx the parse tree
+     * @return the visitor result
+     */
+    fun visitDndItemTrait(ctx: MMParser.DndItemTraitContext?): T
+
+    /**
+     * Visit a parse tree produced by the `dndDamage`
+     * labeled alternative in [MMParser.topLevel].
+     * @param ctx the parse tree
+     * @return the visitor result
+     */
+    fun visitDndDamage(ctx: MMParser.DndDamageContext?): T
+
+    /**
+     * Visit a parse tree produced by the `dndItemTag`
+     * labeled alternative in [MMParser.topLevel].
+     * @param ctx the parse tree
+     * @return the visitor result
+     */
+    fun visitDndItemTag(ctx: MMParser.DndItemTagContext?): T
+
+    /**
+     * Visit a parse tree produced by the `function`
+     * labeled alternative in [MMParser.topLevel].
+     * @param ctx the parse tree
+     * @return the visitor result
+     */
+    fun visitFunction(ctx: MMParser.FunctionContext?): T
+
+    /**
      * Visit a parse tree produced by [MMParser.classDecl].
      * @param ctx the parse tree
      * @return the visitor result
@@ -212,6 +252,262 @@ interface MMVisitor<T> : ParseTreeVisitor<T> {
      * @return the visitor result
      */
     fun visitSkillDecl(ctx: MMParser.SkillDeclContext?): T
+
+    /**
+     * Visit a parse tree produced by [MMParser.traitDecl].
+     * @param ctx the parse tree
+     * @return the visitor result
+     */
+    fun visitTraitDecl(ctx: MMParser.TraitDeclContext?): T
+
+    /**
+     * Visit a parse tree produced by [MMParser.itemTagDecl].
+     * @param ctx the parse tree
+     * @return the visitor result
+     */
+    fun visitItemTagDecl(ctx: MMParser.ItemTagDeclContext?): T
+
+    /**
+     * Visit a parse tree produced by [MMParser.itemTraitDecl].
+     * @param ctx the parse tree
+     * @return the visitor result
+     */
+    fun visitItemTraitDecl(ctx: MMParser.ItemTraitDeclContext?): T
+
+    /**
+     * Visit a parse tree produced by [MMParser.damageDecl].
+     * @param ctx the parse tree
+     * @return the visitor result
+     */
+    fun visitDamageDecl(ctx: MMParser.DamageDeclContext?): T
+
+    /**
+     * Visit a parse tree produced by [MMParser.declBody].
+     * @param ctx the parse tree
+     * @return the visitor result
+     */
+    fun visitDeclBody(ctx: MMParser.DeclBodyContext?): T
+
+    /**
+     * Visit a parse tree produced by [MMParser.funDecl].
+     * @param ctx the parse tree
+     * @return the visitor result
+     */
+    fun visitFunDecl(ctx: MMParser.FunDeclContext?): T
+
+    /**
+     * Visit a parse tree produced by [MMParser.identifierSet].
+     * @param ctx the parse tree
+     * @return the visitor result
+     */
+    fun visitIdentifierSet(ctx: MMParser.IdentifierSetContext?): T
+
+    /**
+     * Visit a parse tree produced by the `exprStmt`
+     * labeled alternative in [MMParser.stmt].
+     * @param ctx the parse tree
+     * @return the visitor result
+     */
+    fun visitExprStmt(ctx: MMParser.ExprStmtContext?): T
+
+    /**
+     * Visit a parse tree produced by the `blockStmt`
+     * labeled alternative in [MMParser.stmt].
+     * @param ctx the parse tree
+     * @return the visitor result
+     */
+    fun visitBlockStmt(ctx: MMParser.BlockStmtContext?): T
+
+    /**
+     * Visit a parse tree produced by the `ifStmt`
+     * labeled alternative in [MMParser.stmt].
+     * @param ctx the parse tree
+     * @return the visitor result
+     */
+    fun visitIfStmt(ctx: MMParser.IfStmtContext?): T
+
+    /**
+     * Visit a parse tree produced by the `whileStmt`
+     * labeled alternative in [MMParser.stmt].
+     * @param ctx the parse tree
+     * @return the visitor result
+     */
+    fun visitWhileStmt(ctx: MMParser.WhileStmtContext?): T
+
+    /**
+     * Visit a parse tree produced by the `forStmt`
+     * labeled alternative in [MMParser.stmt].
+     * @param ctx the parse tree
+     * @return the visitor result
+     */
+    fun visitForStmt(ctx: MMParser.ForStmtContext?): T
+
+    /**
+     * Visit a parse tree produced by the `assignStmt`
+     * labeled alternative in [MMParser.stmt].
+     * @param ctx the parse tree
+     * @return the visitor result
+     */
+    fun visitAssignStmt(ctx: MMParser.AssignStmtContext?): T
+
+    /**
+     * Visit a parse tree produced by the `dotRef`
+     * labeled alternative in [MMParser.ref].
+     * @param ctx the parse tree
+     * @return the visitor result
+     */
+    fun visitDotRef(ctx: MMParser.DotRefContext?): T
+
+    /**
+     * Visit a parse tree produced by the `indexRef`
+     * labeled alternative in [MMParser.ref].
+     * @param ctx the parse tree
+     * @return the visitor result
+     */
+    fun visitIndexRef(ctx: MMParser.IndexRefContext?): T
+
+    /**
+     * Visit a parse tree produced by the `nameRef`
+     * labeled alternative in [MMParser.ref].
+     * @param ctx the parse tree
+     * @return the visitor result
+     */
+    fun visitNameRef(ctx: MMParser.NameRefContext?): T
+
+    /**
+     * Visit a parse tree produced by [MMParser.args].
+     * @param ctx the parse tree
+     * @return the visitor result
+     */
+    fun visitArgs(ctx: MMParser.ArgsContext?): T
+
+    /**
+     * Visit a parse tree produced by the `indexExpr`
+     * labeled alternative in [MMParser.expr].
+     * @param ctx the parse tree
+     * @return the visitor result
+     */
+    fun visitIndexExpr(ctx: MMParser.IndexExprContext?): T
+
+    /**
+     * Visit a parse tree produced by the `dotExpr`
+     * labeled alternative in [MMParser.expr].
+     * @param ctx the parse tree
+     * @return the visitor result
+     */
+    fun visitDotExpr(ctx: MMParser.DotExprContext?): T
+
+    /**
+     * Visit a parse tree produced by the `addExpr`
+     * labeled alternative in [MMParser.expr].
+     * @param ctx the parse tree
+     * @return the visitor result
+     */
+    fun visitAddExpr(ctx: MMParser.AddExprContext?): T
+
+    /**
+     * Visit a parse tree produced by the `literalExpr`
+     * labeled alternative in [MMParser.expr].
+     * @param ctx the parse tree
+     * @return the visitor result
+     */
+    fun visitLiteralExpr(ctx: MMParser.LiteralExprContext?): T
+
+    /**
+     * Visit a parse tree produced by the `compExpr`
+     * labeled alternative in [MMParser.expr].
+     * @param ctx the parse tree
+     * @return the visitor result
+     */
+    fun visitCompExpr(ctx: MMParser.CompExprContext?): T
+
+    /**
+     * Visit a parse tree produced by the `functionCallExpr`
+     * labeled alternative in [MMParser.expr].
+     * @param ctx the parse tree
+     * @return the visitor result
+     */
+    fun visitFunctionCallExpr(ctx: MMParser.FunctionCallExprContext?): T
+
+    /**
+     * Visit a parse tree produced by the `boolExpr`
+     * labeled alternative in [MMParser.expr].
+     * @param ctx the parse tree
+     * @return the visitor result
+     */
+    fun visitBoolExpr(ctx: MMParser.BoolExprContext?): T
+
+    /**
+     * Visit a parse tree produced by the `multExpr`
+     * labeled alternative in [MMParser.expr].
+     * @param ctx the parse tree
+     * @return the visitor result
+     */
+    fun visitMultExpr(ctx: MMParser.MultExprContext?): T
+
+    /**
+     * Visit a parse tree produced by the `parenExpr`
+     * labeled alternative in [MMParser.expr].
+     * @param ctx the parse tree
+     * @return the visitor result
+     */
+    fun visitParenExpr(ctx: MMParser.ParenExprContext?): T
+
+    /**
+     * Visit a parse tree produced by the `identifierExpr`
+     * labeled alternative in [MMParser.expr].
+     * @param ctx the parse tree
+     * @return the visitor result
+     */
+    fun visitIdentifierExpr(ctx: MMParser.IdentifierExprContext?): T
+
+    /**
+     * Visit a parse tree produced by the `numberLit`
+     * labeled alternative in [MMParser.literal].
+     * @param ctx the parse tree
+     * @return the visitor result
+     */
+    fun visitNumberLit(ctx: MMParser.NumberLitContext?): T
+
+    /**
+     * Visit a parse tree produced by the `rawDiceLit`
+     * labeled alternative in [MMParser.literal].
+     * @param ctx the parse tree
+     * @return the visitor result
+     */
+    fun visitRawDiceLit(ctx: MMParser.RawDiceLitContext?): T
+
+    /**
+     * Visit a parse tree produced by the `distanceLit`
+     * labeled alternative in [MMParser.literal].
+     * @param ctx the parse tree
+     * @return the visitor result
+     */
+    fun visitDistanceLit(ctx: MMParser.DistanceLitContext?): T
+
+    /**
+     * Visit a parse tree produced by the `currencyLit`
+     * labeled alternative in [MMParser.literal].
+     * @param ctx the parse tree
+     * @return the visitor result
+     */
+    fun visitCurrencyLit(ctx: MMParser.CurrencyLitContext?): T
+
+    /**
+     * Visit a parse tree produced by the `weightLit`
+     * labeled alternative in [MMParser.literal].
+     * @param ctx the parse tree
+     * @return the visitor result
+     */
+    fun visitWeightLit(ctx: MMParser.WeightLitContext?): T
+
+    /**
+     * Visit a parse tree produced by the `stringLit`
+     * labeled alternative in [MMParser.literal].
+     * @param ctx the parse tree
+     * @return the visitor result
+     */
+    fun visitStringLit(ctx: MMParser.StringLitContext?): T
 
     /**
      * Visit a parse tree produced by the `stringDescr`

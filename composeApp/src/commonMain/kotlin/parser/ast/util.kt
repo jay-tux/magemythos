@@ -27,3 +27,8 @@ fun String.toPathAndFile(): Pair<String, String> {
     val parts = this.split("/")
     return parts.notLast().joinToString("/") to parts.last()
 }
+
+fun Float.asIntIfIsInt(): Int? {
+    val int = this.toInt()
+    return if(int.toFloat() == this) int else null
+}
