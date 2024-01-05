@@ -18,7 +18,6 @@ import parser.ast.FloatLiteral
 import parser.ast.HeaderNode
 import parser.ast.IntLiteral
 import parser.ast.ItemDeclaration
-import parser.ast.Literal
 import parser.ast.ParseError
 import parser.ast.Pos
 import parser.ast.RaceDeclaration
@@ -36,17 +35,15 @@ import parser.ast.notLast
 import parser.ast.relativeTo
 import parser.ast.toPathAndFile
 import parser.ast.toPos
-import parser.ast.upOneDir
 import parser.mm.MMBaseVisitor
 import parser.mm.MMLexer
 import parser.mm.MMParser
 import java.io.File
-import java.io.FileNotFoundException
 import java.nio.file.Path
 
 inline fun <reified T> nonNull(t: T?): T = t ?: throw ParseError("Unexpected null node (expected a node of type ${T::class.simpleName}).")
 inline fun <reified T, R> nonNull(t: T?, f: (T) -> R): R = t?.let { f(it) } ?: throw ParseError("Unexpected null node (expected a node of type ${T::class.simpleName}).")
-inline fun <reified T: AstNode> require(t: AstNode): T = if(t is T) (t as T) else throw ParseError("Unexpected node type: ${t::class.simpleName}, expected ${T::class.simpleName}")
+inline fun <reified T: AstNode> require(t: AstNode): T = if(t is T) t else throw ParseError("Unexpected node type: ${t::class.simpleName}, expected ${T::class.simpleName}")
 
 class ParseErrorListener : BaseErrorListener() {
     override fun syntaxError(recognizer: Recognizer<*, *>?, offendingSymbol: Any?, line: Int, charPositionInLine: Int, msg: String?, e: RecognitionException?) {
@@ -192,7 +189,7 @@ class DataLoader(target: String) : MMBaseVisitor<AstNode>() {
                 when(toggle) {
                     "\$AUTO_NAME" -> enableAutoName = true
                     "\$AUTO_DESCR" -> enableAutoDescr = true
-                    else -> println("Warning: Invalid toggle to enable: '$toggle'"); // TODO: warning
+                    else -> println("Warning: Invalid toggle to enable: '$toggle'") // TODO: warning
                 }
             }
         }

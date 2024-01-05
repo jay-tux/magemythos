@@ -9,13 +9,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.onClick
 import androidx.compose.material.Button
-import androidx.compose.material.Icon
 import androidx.compose.material.Text
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material.icons.filled.KeyboardArrowRight
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -26,7 +21,6 @@ import androidx.compose.ui.unit.dp
 import parser.ast.AbilityDeclaration
 import parser.ast.BackgroundDeclaration
 import parser.ast.ClassDeclaration
-import parser.ast.DeclarationSet
 import parser.ast.ItemDeclaration
 import parser.ast.RaceDeclaration
 import parser.ast.SkillDeclaration

@@ -1,6 +1,10 @@
 rootProject.name = "MageMythos"
 enableFeaturePreview("TYPESAFE_PROJECT_ACCESSORS")
 
+include(":androidApp")
+include(":shared")
+include(":desktopApp")
+
 pluginManagement {
     repositories {
         maven("https://maven.pkg.jetbrains.space/public/p/compose/dev")
@@ -17,5 +21,3 @@ dependencyResolutionManagement {
         maven("https://maven.pkg.jetbrains.space/public/p/compose/dev")
     }
 }
-
-include(":composeApp")

@@ -3,31 +3,32 @@ import org.jetbrains.compose.desktop.application.dsl.TargetFormat
 
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
-    alias(libs.plugins.androidApplication)
+    alias(libs.plugins.androidLibrary)
     alias(libs.plugins.jetbrainsCompose)
+    alias(libs.plugins.kapt)
 }
 
 kotlin {
-    androidTarget {
-        compilations.all {
-            kotlinOptions {
-                jvmTarget = "1.8"
-            }
-        }
-    }
-    
-    jvm("desktop")
-    
-    sourceSets {
-        val desktopMain by getting
+    androidTarget()
+}
 
-        androidMain{
+dependencies {
+    // Later?
+}
+
+kotlin {
+    androidTarget()
+
+    jvm("desktop")
+
+    sourceSets {
+        val parser by creating {
             dependencies {
-                implementation(libs.compose.ui.tooling.preview)
-                implementation(libs.androidx.activity.compose)
+                implementation(libs.antlr)
             }
         }
-        commonMain{
+
+        val commonMain by getting {
             dependencies {
                 implementation(compose.runtime)
                 implementation(compose.foundation)
@@ -38,9 +39,25 @@ kotlin {
                 implementation(libs.antlr)
                 implementation(libs.filepicker)
             }
+//            dependsOn(parser)
         }
-        desktopMain.dependencies {
-            implementation(compose.desktop.currentOs)
+
+        val jvmMain by creating {
+            dependsOn(parser)
+        }
+
+        val androidMain by getting {
+            dependencies {
+                implementation(libs.compose.ui.tooling.preview)
+                implementation(libs.androidx.activity.compose)
+            }
+            dependsOn(jvmMain)
+        }
+        val desktopMain by getting {
+            dependencies {
+                implementation(compose.desktop.currentOs)
+            }
+            dependsOn(jvmMain)
         }
     }
 }
@@ -54,11 +71,11 @@ android {
     sourceSets["main"].resources.srcDirs("src/commonMain/resources")
 
     defaultConfig {
-        applicationId = "org.jaytux.magemytho"
+//        applicationId = "org.jaytux.magemytho"
         minSdk = libs.versions.android.minSdk.get().toInt()
         targetSdk = libs.versions.android.targetSdk.get().toInt()
-        versionCode = 1
-        versionName = "1.0"
+//        versionCode = 1
+//        versionName = "1.0"
     }
     packaging {
         resources {
@@ -71,8 +88,8 @@ android {
         }
     }
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_1_8
-        targetCompatibility = JavaVersion.VERSION_1_8
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
     }
     dependencies {
         debugImplementation(libs.compose.ui.tooling)
