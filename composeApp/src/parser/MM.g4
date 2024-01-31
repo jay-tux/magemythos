@@ -9,6 +9,7 @@ DIV:                '/';
 MOD:                '%';
 PLUS:               '+';
 MINUS:              '-';
+NOT:                '!';
 GT:                 '>';
 LT:                 '<';
 GE:                 '>=';
@@ -18,11 +19,6 @@ NE:                 '!=';
 AND:                '&&';
 OR:                 '||';
 ASSIGN:             '=';
-PLUS_ASSIGN:        '+=';
-MINUS_ASSIGN:       '-=';
-MULT_ASSIGN:        '*=';
-DIV_ASSIGN:         '/=';
-MOD_ASSIGN:         '%=';
 
 BLOCK:              '{';
 END:                '}';
@@ -47,13 +43,17 @@ FUN:                'fun';
 ELSE:               'else';
 ITEM:               'item';
 RACE:               'race';
+BREAK:              'break';
 CLASS:              'class';
+FIELD:              'field';
 SKILL:              'skill';
 SPELL:              'spell';
 TRAIT:              'trait';
 WHILE:              'while';
 DAMAGE:             'damage';
 ENABLE:             'enable';
+GLOBAL:             'global';
+RETURN:             'return';
 SOURCE:             'source';
 ABILITY:            'ability';
 STRINGS:            'strings';
@@ -116,7 +116,8 @@ topLevel:           classDecl                                               #dnd
         |           itemTraitDecl                                           #dndItemTrait
         |           damageDecl                                              #dndDamage
         |           itemTagDecl                                             #dndItemTag
-        |           funDecl                                                 #function;
+        |           funDecl                                                 #function
+        |           globalDecl                                              #globalVar;
 
 classDecl:          CLASS name=IDENTIFIER (dispName=description)? (P_OPEN d=description P_CLOSE)? BLOCK declBody* END;
 
@@ -144,36 +145,47 @@ itemTraitDecl:      ITEM_TRAIT name=IDENTIFIER (dispName=description)? (P_OPEN d
 
 damageDecl:         DAMAGE name=IDENTIFIER (dispName=description)? (P_OPEN d=description P_CLOSE)? SEMI;
 
-declBody:           funDecl;
+declBody:           funDecl                                                 #memberFunc
+        |           fieldDecl                                               #memberField;
 
 funDecl:            FUN name=IDENTIFIER P_OPEN identifierSet P_CLOSE BLOCK stmt* END;
+
+fieldDecl:          FIELD name=IDENTIFIER ASSIGN expr SEMI;
+
+globalDecl:         GLOBAL name=IDENTIFIER ASSIGN expr SEMI;
 
 identifierSet:      (IDENTIFIER (COMMA IDENTIFIER)*)?;
 
 stmt:               expr SEMI                                               #exprStmt
     |               BLOCK stmt* END                                         #blockStmt
-    |               IF P_OPEN expr P_CLOSE stmt (ELSE stmt)?                #ifStmt
+    |               IF P_OPEN expr P_CLOSE bTrue=stmt (ELSE bFalse=stmt)?   #ifStmt
     |               WHILE P_OPEN expr P_CLOSE stmt                          #whileStmt
     |               FOR P_OPEN v=IDENTIFIER IN expr P_CLOSE stmt            #forStmt
-    |               v=ref (ASSIGN|PLUS_ASSIGN|MINUS_ASSIGN|MULT_ASSIGN|DIV_ASSIGN|MOD_ASSIGN) expr SEMI
-                                                                            #assignStmt;
+    |               BREAK SEMI                                              #breakStmt
+    |               RETURN v=expr? SEMI                                     #returnStmt
+    |               v=ref ASSIGN expr SEMI                                  #assignStmt;
 
-ref:                base=expr DOT name=IDENTIFIER                           #dotRef
-    |               base=expr BR_OPEN expr BR_CLOSE                         #indexRef
-    |               name=IDENTIFIER                                         #nameRef;
+ref:                name=IDENTIFIER rest=refTail*;
+
+refTail:            DOT next=IDENTIFIER                                     #fieldRef
+       |            BR_OPEN idx=expr BR_CLOSE                               #indexRef;
 
 args:               (expr (COMMA expr)*)?;
 
 expr:               literal                                                 #literalExpr
     |               name=IDENTIFIER                                         #identifierExpr
     |               base=expr DOT name=IDENTIFIER                           #dotExpr
-    |               base=expr BR_OPEN expr BR_CLOSE                         #indexExpr
+    |               base=expr BR_OPEN idx=expr BR_CLOSE                     #indexExpr
     |               IDENTIFIER P_OPEN args P_CLOSE                          #functionCallExpr
     |               P_OPEN expr P_CLOSE                                     #parenExpr
-    |               expr (MULT|DIV|MOD) expr                                #multExpr
-    |               expr (PLUS|MINUS) expr                                  #addExpr
-    |               expr (GT|LT|GE|LE|EQ|NE) expr                           #compExpr
-    |               expr (AND|OR) expr                                      #boolExpr;
+    |               op=(PLUS|MINUS|NOT) expr                                #unaryExpr
+    |               l=expr op=(MULT|DIV|MOD) r=expr                         #multExpr
+    |               l=expr op=(PLUS|MINUS) r=expr                           #addExpr
+    |               l=expr op=(AND|OR) r=expr                               #boolExpr
+    |               l=expr op=(GT|LT|GE|LE|EQ|NE) r=expr                    #compExpr
+    |               BR_OPEN expr (COMMA expr)* BR_CLOSE                     #listLit
+    |               BLOCK keys+=expr ASSIGN values+=expr (COMMA keys+=expr ASSIGN values+=expr)* END
+                                                                            #dictLit;
 
 literal:            NUMBER                                                  #numberLit
        |            DICE_LIT                                                #rawDiceLit

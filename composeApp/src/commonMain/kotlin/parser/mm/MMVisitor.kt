@@ -2,6 +2,11 @@
 package parser.mm
 
 import org.antlr.v4.runtime.tree.ParseTreeVisitor
+import parser.mm.MMParser.FieldDeclContext
+import parser.mm.MMParser.GlobalDeclContext
+import parser.mm.MMParser.GlobalVarContext
+import parser.mm.MMParser.MemberFieldContext
+import parser.mm.MMParser.MemberFuncContext
 
 /**
  * This interface defines a complete generic visitor for a parse tree produced
@@ -191,6 +196,14 @@ interface MMVisitor<T> : ParseTreeVisitor<T> {
     fun visitFunction(ctx: MMParser.FunctionContext?): T
 
     /**
+     * Visit a parse tree produced by the `globalVar`
+     * labeled alternative in [MMParser.topLevel].
+     * @param ctx the parse tree
+     * @return the visitor result
+     */
+    fun visitGlobalVar(ctx: GlobalVarContext?): T
+
+    /**
      * Visit a parse tree produced by [MMParser.classDecl].
      * @param ctx the parse tree
      * @return the visitor result
@@ -282,11 +295,20 @@ interface MMVisitor<T> : ParseTreeVisitor<T> {
     fun visitDamageDecl(ctx: MMParser.DamageDeclContext?): T
 
     /**
-     * Visit a parse tree produced by [MMParser.declBody].
+     * Visit a parse tree produced by the `memberFunc`
+     * labeled alternative in [MMParser.declBody].
      * @param ctx the parse tree
      * @return the visitor result
      */
-    fun visitDeclBody(ctx: MMParser.DeclBodyContext?): T
+    fun visitMemberFunc(ctx: MemberFuncContext?): T
+
+    /**
+     * Visit a parse tree produced by the `memberField`
+     * labeled alternative in [MMParser.declBody].
+     * @param ctx the parse tree
+     * @return the visitor result
+     */
+    fun visitMemberField(ctx: MemberFieldContext?): T
 
     /**
      * Visit a parse tree produced by [MMParser.funDecl].
@@ -294,6 +316,20 @@ interface MMVisitor<T> : ParseTreeVisitor<T> {
      * @return the visitor result
      */
     fun visitFunDecl(ctx: MMParser.FunDeclContext?): T
+
+    /**
+     * Visit a parse tree produced by [MMParser.fieldDecl].
+     * @param ctx the parse tree
+     * @return the visitor result
+     */
+    fun visitFieldDecl(ctx: FieldDeclContext?): T
+
+    /**
+     * Visit a parse tree produced by [MMParser.globalDecl].
+     * @param ctx the parse tree
+     * @return the visitor result
+     */
+    fun visitGlobalDecl(ctx: GlobalDeclContext?): T
 
     /**
      * Visit a parse tree produced by [MMParser.identifierSet].
@@ -343,6 +379,22 @@ interface MMVisitor<T> : ParseTreeVisitor<T> {
     fun visitForStmt(ctx: MMParser.ForStmtContext?): T
 
     /**
+     * Visit a parse tree produced by the `breakStmt`
+     * labeled alternative in [MMParser.stmt].
+     * @param ctx the parse tree
+     * @return the visitor result
+     */
+    fun visitBreakStmt(ctx: MMParser.BreakStmtContext?): T
+
+    /**
+     * Visit a parse tree produced by the `returnStmt`
+     * labeled alternative in [MMParser.stmt].
+     * @param ctx the parse tree
+     * @return the visitor result
+     */
+    fun visitReturnStmt(ctx: MMParser.ReturnStmtContext?): T
+
+    /**
      * Visit a parse tree produced by the `assignStmt`
      * labeled alternative in [MMParser.stmt].
      * @param ctx the parse tree
@@ -351,28 +403,27 @@ interface MMVisitor<T> : ParseTreeVisitor<T> {
     fun visitAssignStmt(ctx: MMParser.AssignStmtContext?): T
 
     /**
-     * Visit a parse tree produced by the `dotRef`
-     * labeled alternative in [MMParser.ref].
+     * Visit a parse tree produced by [MMParser.ref].
      * @param ctx the parse tree
      * @return the visitor result
      */
-    fun visitDotRef(ctx: MMParser.DotRefContext?): T
+    fun visitRef(ctx: MMParser.RefContext?): T
+
+    /**
+     * Visit a parse tree produced by the `fieldRef`
+     * labeled alternative in [MMParser.refTail].
+     * @param ctx the parse tree
+     * @return the visitor result
+     */
+    fun visitFieldRef(ctx: MMParser.FieldRefContext?): T
 
     /**
      * Visit a parse tree produced by the `indexRef`
-     * labeled alternative in [MMParser.ref].
+     * labeled alternative in [MMParser.refTail].
      * @param ctx the parse tree
      * @return the visitor result
      */
     fun visitIndexRef(ctx: MMParser.IndexRefContext?): T
-
-    /**
-     * Visit a parse tree produced by the `nameRef`
-     * labeled alternative in [MMParser.ref].
-     * @param ctx the parse tree
-     * @return the visitor result
-     */
-    fun visitNameRef(ctx: MMParser.NameRefContext?): T
 
     /**
      * Visit a parse tree produced by [MMParser.args].
@@ -380,6 +431,46 @@ interface MMVisitor<T> : ParseTreeVisitor<T> {
      * @return the visitor result
      */
     fun visitArgs(ctx: MMParser.ArgsContext?): T
+
+    /**
+     * Visit a parse tree produced by the `listLit`
+     * labeled alternative in [MMParser.expr].
+     * @param ctx the parse tree
+     * @return the visitor result
+     */
+    fun visitListLit(ctx: MMParser.ListLitContext?): T
+
+    /**
+     * Visit a parse tree produced by the `dotExpr`
+     * labeled alternative in [MMParser.expr].
+     * @param ctx the parse tree
+     * @return the visitor result
+     */
+    fun visitDotExpr(ctx: MMParser.DotExprContext?): T
+
+    /**
+     * Visit a parse tree produced by the `dictLit`
+     * labeled alternative in [MMParser.expr].
+     * @param ctx the parse tree
+     * @return the visitor result
+     */
+    fun visitDictLit(ctx: MMParser.DictLitContext?): T
+
+    /**
+     * Visit a parse tree produced by the `multExpr`
+     * labeled alternative in [MMParser.expr].
+     * @param ctx the parse tree
+     * @return the visitor result
+     */
+    fun visitMultExpr(ctx: MMParser.MultExprContext?): T
+
+    /**
+     * Visit a parse tree produced by the `parenExpr`
+     * labeled alternative in [MMParser.expr].
+     * @param ctx the parse tree
+     * @return the visitor result
+     */
+    fun visitParenExpr(ctx: MMParser.ParenExprContext?): T
 
     /**
      * Visit a parse tree produced by the `indexExpr`
@@ -390,12 +481,12 @@ interface MMVisitor<T> : ParseTreeVisitor<T> {
     fun visitIndexExpr(ctx: MMParser.IndexExprContext?): T
 
     /**
-     * Visit a parse tree produced by the `dotExpr`
+     * Visit a parse tree produced by the `unaryExpr`
      * labeled alternative in [MMParser.expr].
      * @param ctx the parse tree
      * @return the visitor result
      */
-    fun visitDotExpr(ctx: MMParser.DotExprContext?): T
+    fun visitUnaryExpr(ctx: MMParser.UnaryExprContext?): T
 
     /**
      * Visit a parse tree produced by the `addExpr`
@@ -436,22 +527,6 @@ interface MMVisitor<T> : ParseTreeVisitor<T> {
      * @return the visitor result
      */
     fun visitBoolExpr(ctx: MMParser.BoolExprContext?): T
-
-    /**
-     * Visit a parse tree produced by the `multExpr`
-     * labeled alternative in [MMParser.expr].
-     * @param ctx the parse tree
-     * @return the visitor result
-     */
-    fun visitMultExpr(ctx: MMParser.MultExprContext?): T
-
-    /**
-     * Visit a parse tree produced by the `parenExpr`
-     * labeled alternative in [MMParser.expr].
-     * @param ctx the parse tree
-     * @return the visitor result
-     */
-    fun visitParenExpr(ctx: MMParser.ParenExprContext?): T
 
     /**
      * Visit a parse tree produced by the `identifierExpr`

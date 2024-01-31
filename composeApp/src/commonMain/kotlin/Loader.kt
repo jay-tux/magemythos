@@ -5,30 +5,58 @@ import org.antlr.v4.runtime.ParserRuleContext
 import org.antlr.v4.runtime.RecognitionException
 import org.antlr.v4.runtime.Recognizer
 import parser.ast.AbilityDeclaration
+import parser.ast.AssignStmt
 import parser.ast.AstNode
 import parser.ast.BackgroundDeclaration
+import parser.ast.BinaryExpr
+import parser.ast.BinaryOperator
+import parser.ast.BreakStmt
 import parser.ast.ClassDeclaration
+import parser.ast.Currency
+import parser.ast.CurrencyLiteral
 import parser.ast.Declaration
 import parser.ast.DeclarationSet
 import parser.ast.Dice
 import parser.ast.DiceLiteral
+import parser.ast.DictExpression
 import parser.ast.DistanceLiteral
 import parser.ast.EmptyNode
+import parser.ast.ExprStmt
+import parser.ast.Expression
+import parser.ast.VariableDeclaration
 import parser.ast.FloatLiteral
+import parser.ast.ForStmt
+import parser.ast.FunCallExpr
+import parser.ast.FunctionDeclaration
 import parser.ast.HeaderNode
+import parser.ast.IdentifierExpr
+import parser.ast.IfStmt
+import parser.ast.IndexExpr
+import parser.ast.IndexTail
 import parser.ast.IntLiteral
 import parser.ast.ItemDeclaration
-import parser.ast.Literal
+import parser.ast.LValue
+import parser.ast.LValueTail
+import parser.ast.ListExpression
+import parser.ast.LiteralExpr
+import parser.ast.ObjectMemberExpr
+import parser.ast.ObjectMemberTail
 import parser.ast.ParseError
 import parser.ast.Pos
 import parser.ast.RaceDeclaration
+import parser.ast.ReturnStmt
 import parser.ast.SkillDeclaration
 import parser.ast.SpellDeclaration
+import parser.ast.Statement
+import parser.ast.StmtBlock
 import parser.ast.StringLiteral
 import parser.ast.SubClassDeclaration
 import parser.ast.SubRaceDeclaration
 import parser.ast.TypedListLiteral
+import parser.ast.UnaryExpr
+import parser.ast.UnaryOperator
 import parser.ast.WeightLiteral
+import parser.ast.WhileStmt
 import parser.ast.asIntIfIsInt
 import parser.ast.merge
 import parser.ast.nonNull
@@ -36,12 +64,11 @@ import parser.ast.notLast
 import parser.ast.relativeTo
 import parser.ast.toPathAndFile
 import parser.ast.toPos
-import parser.ast.upOneDir
 import parser.mm.MMBaseVisitor
 import parser.mm.MMLexer
 import parser.mm.MMParser
 import java.io.File
-import java.io.FileNotFoundException
+import java.lang.IllegalArgumentException
 import java.nio.file.Path
 
 inline fun <reified T> nonNull(t: T?): T = t ?: throw ParseError("Unexpected null node (expected a node of type ${T::class.simpleName}).")
@@ -50,7 +77,7 @@ inline fun <reified T: AstNode> require(t: AstNode): T = if(t is T) (t as T) els
 
 class ParseErrorListener : BaseErrorListener() {
     override fun syntaxError(recognizer: Recognizer<*, *>?, offendingSymbol: Any?, line: Int, charPositionInLine: Int, msg: String?, e: RecognitionException?) {
-        throw ParseError("Syntax error at $line:$charPositionInLine: $msg (offending token: ${e?.offendingToken?.text})")
+        throw ParseError("Syntax error at ${DataLoader.currentFile()}:$line:$charPositionInLine: $msg (offending token: ${e?.offendingToken?.text})")
     }
 }
 
@@ -89,6 +116,7 @@ class StringsLoader : MMBaseVisitor<Map<String, String>>() {
 data class LoaderResult(val strings: Map<String, String>, val tree: DeclarationSet)
 
 class DataLoader(target: String) : MMBaseVisitor<AstNode>() {
+    //region Preamble
     val file = Path.of(target).toFile().canonicalPath
     var strings: Map<String, String> = mapOf()
         private set
@@ -98,6 +126,10 @@ class DataLoader(target: String) : MMBaseVisitor<AstNode>() {
 
     private inline fun <reified T: AstNode> visitThrough(ctx: ParserRuleContext?): T = nonNull(ctx) {
         require<T>(visit(it.getChild(0)))
+    }
+
+    private inline fun <reified T: AstNode> visitRequire(ctx: ParserRuleContext?): T = nonNull(ctx) {
+        require<T>(visit(it))
     }
 
     private fun visitDesc(ctx: MMParser.DescriptionContext?, base: String): String {
@@ -141,6 +173,8 @@ class DataLoader(target: String) : MMBaseVisitor<AstNode>() {
         val backgrounds = mutableListOf<BackgroundDeclaration>()
         val abilities = mutableListOf<AbilityDeclaration>()
         val skills = mutableListOf<SkillDeclaration>()
+        val freeFuncs = mutableListOf<FunctionDeclaration>()
+        val globals = mutableListOf<VariableDeclaration>()
 
         nonNull(c.topLevel()).map {
             visit(it) as? Declaration
@@ -155,12 +189,15 @@ class DataLoader(target: String) : MMBaseVisitor<AstNode>() {
                 is BackgroundDeclaration -> backgrounds.add(it)
                 is AbilityDeclaration -> abilities.add(it)
                 is SkillDeclaration -> skills.add(it)
+                is FunctionDeclaration -> freeFuncs.add(it)
+                is VariableDeclaration -> globals.add(it)
             }
         }
 
         DeclarationSet(
             h.src, h.deps,
             classes, races, subClasses, subRaces, items, spells, backgrounds, abilities, skills,
+            freeFuncs, globals,
             c.toPos(file)
         )
     }
@@ -198,6 +235,7 @@ class DataLoader(target: String) : MMBaseVisitor<AstNode>() {
         }
         return EmptyNode(ctx?.toPos(file) ?: Pos("???", -1, -1))
     }
+    //endregion
 
     //region Declarations
     override fun visitDndClass(ctx: MMParser.DndClassContext?): AstNode = visitThrough<ClassDeclaration>(ctx)
@@ -209,6 +247,7 @@ class DataLoader(target: String) : MMBaseVisitor<AstNode>() {
     override fun visitDndBg(ctx: MMParser.DndBgContext?): AstNode = visitThrough<BackgroundDeclaration>(ctx)
     override fun visitDndAbility(ctx: MMParser.DndAbilityContext?): AstNode = visitThrough<AbilityDeclaration>(ctx)
     override fun visitDndSkill(ctx: MMParser.DndSkillContext?): AstNode = visitThrough<SkillDeclaration>(ctx)
+    override fun visitFunction(ctx: MMParser.FunctionContext?): AstNode = visitThrough<FunctionDeclaration>(ctx)
 
     override fun visitClassDecl(ctx: MMParser.ClassDeclContext?): AstNode = nonNull(ctx) { ctx ->
         ctx.name?.text?.let {
@@ -287,9 +326,197 @@ class DataLoader(target: String) : MMBaseVisitor<AstNode>() {
             )
         } ?: throw ParseError("No skill name given.")
     }
+
+    override fun visitFunDecl(ctx: MMParser.FunDeclContext?): AstNode = nonNull(ctx) { ctx ->
+        FunctionDeclaration(
+            ctx.name?.text ?: throw ParseError("No function name given."),
+            visitRequire<TypedListLiteral<String>>(ctx.identifierSet()).value,
+            ctx.stmt().map { visitRequire<Statement>(it) },
+            ctx.toPos(file)
+        )
+    }
+
+    override fun visitMemberField(ctx: MMParser.MemberFieldContext?): AstNode = nonNull(ctx) {
+        visitRequire<VariableDeclaration>(it.fieldDecl())
+    }
+
+    override fun visitMemberFunc(ctx: MMParser.MemberFuncContext?): AstNode = nonNull(ctx) {
+        visitRequire<FunctionDeclaration>(it.funDecl())
+    }
+    //endregion
+
+    //region Statements
+    override fun visitExprStmt(ctx: MMParser.ExprStmtContext?): AstNode = nonNull(ctx) {
+        ExprStmt(visitRequire(it.expr()), it.toPos(file))
+    }
+
+    override fun visitBlockStmt(ctx: MMParser.BlockStmtContext?): AstNode = nonNull(ctx) {
+        StmtBlock(it.stmt().map { s -> visitRequire<Statement>(s) }, it.toPos(file))
+    }
+
+    override fun visitIfStmt(ctx: MMParser.IfStmtContext?): AstNode = nonNull(ctx) {
+        IfStmt(
+            visitRequire(it.expr()),
+            visitRequire(it.bTrue ?: throw ParseError("Unexpected null node (branch-true for if-statement) at ${it.toPos(file)}")),
+            it.bFalse?.let { o -> visitRequire(o) },
+            it.toPos(file)
+        )
+    }
+
+    override fun visitWhileStmt(ctx: MMParser.WhileStmtContext?): AstNode = nonNull(ctx) {
+        WhileStmt(
+            visitRequire(it.expr()),
+            visitRequire(it.stmt()),
+            it.toPos(file)
+        )
+    }
+
+    override fun visitForStmt(ctx: MMParser.ForStmtContext?): AstNode = nonNull(ctx) {
+        ForStmt(
+            it.IDENTIFIER().text,
+            visitRequire(it.expr()),
+            visitRequire(it.stmt()),
+            it.toPos(file)
+        )
+    }
+
+    override fun visitBreakStmt(ctx: MMParser.BreakStmtContext?): AstNode = nonNull(ctx) {
+        BreakStmt(it.toPos(file))
+    }
+
+    override fun visitReturnStmt(ctx: MMParser.ReturnStmtContext?): AstNode = nonNull(ctx) {
+        ReturnStmt(it.v?.let { e -> visitRequire(e) }, it.toPos(file))
+    }
+
+    override fun visitAssignStmt(ctx: MMParser.AssignStmtContext?): AstNode = nonNull(ctx) {
+        AssignStmt(
+            visitRequire<LValue>(it.v),
+            visitRequire(it.expr()),
+            it.toPos(file)
+        )
+    }
+    //endregion
+
+    //region References
+    override fun visitRef(ctx: MMParser.RefContext?): AstNode = nonNull(ctx) {
+        val n = it.name?.text ?: throw ParseError("Unexpected null start of reference at ${it.toPos(file)}.")
+        val tail = it.refTail().map { e -> visitRequire<LValueTail>(e) }
+        LValue(n, tail, it.toPos(file))
+    }
+
+    override fun visitFieldRef(ctx: MMParser.FieldRefContext?): AstNode = nonNull(ctx) {
+        ObjectMemberTail(it.IDENTIFIER().text, it.toPos(file))
+    }
+
+    override fun visitIndexRef(ctx: MMParser.IndexRefContext?): AstNode = nonNull(ctx) {
+        IndexTail(visitRequire(it.idx), it.toPos(file))
+    }
     //endregion
 
     //region Expressions
+    override fun visitArgs(ctx: MMParser.ArgsContext?): AstNode = nonNull(ctx) {
+        TypedListLiteral(it.expr().map { e -> visitRequire<Expression>(e) }, it.toPos(file))
+    }
+
+    override fun visitLiteralExpr(ctx: MMParser.LiteralExprContext?): AstNode = nonNull(ctx) {
+        LiteralExpr(visitRequire(it.literal()), it.toPos(file))
+    }
+
+    override fun visitIdentifierExpr(ctx: MMParser.IdentifierExprContext?): AstNode = nonNull(ctx) {
+        IdentifierExpr(it.IDENTIFIER().text, it.toPos(file))
+    }
+
+    override fun visitDotExpr(ctx: MMParser.DotExprContext?): AstNode = nonNull(ctx) {
+        ObjectMemberExpr(visitRequire(it.base), it.IDENTIFIER().text, it.toPos(file))
+    }
+
+    override fun visitIndexExpr(ctx: MMParser.IndexExprContext?): AstNode = nonNull(ctx) {
+        IndexExpr(visitRequire(it.base), visitRequire(it.idx), it.toPos(file))
+    }
+
+    override fun visitFunctionCallExpr(ctx: MMParser.FunctionCallExprContext?): AstNode = nonNull(ctx) {
+        FunCallExpr(it.IDENTIFIER().text, visitRequire<TypedListLiteral<Expression>>(it.args()).value, it.toPos(file))
+    }
+
+    override fun visitParenExpr(ctx: MMParser.ParenExprContext?): AstNode = nonNull(ctx) {
+        visitRequire<Expression>(it.expr())
+    }
+
+    override fun visitUnaryExpr(ctx: MMParser.UnaryExprContext?): AstNode = nonNull(ctx) {
+        val body = visitRequire<Expression>(it.expr())
+        when(val opStr = it.op?.text) {
+            "!" -> UnaryExpr(UnaryOperator.NOT, body, it.toPos(file))
+            "-" -> UnaryExpr(UnaryOperator.NEGATE, body, it.toPos(file))
+            "+" -> body
+            null -> throw ParseError("Unexpected null unary operator at ${it.toPos(file)}")
+            else -> throw ParseError("Invalid unary operator: $opStr at ${it.toPos(file)}")
+        }
+    }
+
+    override fun visitMultExpr(ctx: MMParser.MultExprContext?): AstNode = nonNull(ctx) {
+        val l = visitRequire<Expression>(it.l)
+        val r = visitRequire<Expression>(it.r)
+
+        when(val opStr = it.op?.text) {
+            "*" -> BinaryExpr(BinaryOperator.MUL, l, r, it.toPos(file))
+            "/" -> BinaryExpr(BinaryOperator.DIV, l, r, it.toPos(file))
+            "%" -> BinaryExpr(BinaryOperator.MOD, l, r, it.toPos(file))
+            null -> throw ParseError("Unexpected null binary operator at ${it.toPos(file)}")
+            else -> throw ParseError("Invalid binary operator: $opStr at ${it.toPos(file)}")
+        }
+    }
+
+    override fun visitAddExpr(ctx: MMParser.AddExprContext?): AstNode = nonNull(ctx) {
+        val l = visitRequire<Expression>(it.l)
+        val r = visitRequire<Expression>(it.r)
+
+        when(val opStr = it.op?.text) {
+            "+" -> BinaryExpr(BinaryOperator.ADD, l, r, it.toPos(file))
+            "-" -> BinaryExpr(BinaryOperator.SUB, l, r, it.toPos(file))
+            null -> throw ParseError("Unexpected null binary operator at ${it.toPos(file)}")
+            else -> throw ParseError("Invalid binary operator: $opStr at ${it.toPos(file)}")
+        }
+    }
+
+    override fun visitBoolExpr(ctx: MMParser.BoolExprContext?): AstNode = nonNull(ctx) {
+        val l = visitRequire<Expression>(it.l)
+        val r = visitRequire<Expression>(it.r)
+
+        when(val opStr = it.op?.text) {
+            "&&" -> BinaryExpr(BinaryOperator.AND, l, r, it.toPos(file))
+            "||" -> BinaryExpr(BinaryOperator.OR, l, r, it.toPos(file))
+            null -> throw ParseError("Unexpected null binary operator at ${it.toPos(file)}")
+            else -> throw ParseError("Invalid binary operator: $opStr at ${it.toPos(file)}")
+        }
+    }
+
+    override fun visitCompExpr(ctx: MMParser.CompExprContext?): AstNode = nonNull(ctx) {
+        val l = visitRequire<Expression>(it.l)
+        val r = visitRequire<Expression>(it.r)
+
+        when(val opStr = it.op?.text) {
+            "<" -> BinaryExpr(BinaryOperator.LT, l, r, it.toPos(file))
+            ">" -> BinaryExpr(BinaryOperator.GT, l, r, it.toPos(file))
+            "<=" -> BinaryExpr(BinaryOperator.LTE, l, r, it.toPos(file))
+            ">=" -> BinaryExpr(BinaryOperator.GTE, l, r, it.toPos(file))
+            "==" -> BinaryExpr(BinaryOperator.EQ, l, r, it.toPos(file))
+            "!=" -> BinaryExpr(BinaryOperator.NEQ, l, r, it.toPos(file))
+            null -> throw ParseError("Unexpected null binary operator at ${it.toPos(file)}")
+            else -> throw ParseError("Invalid binary operator: $opStr at ${it.toPos(file)}")
+        }
+    }
+
+    override fun visitListLit(ctx: MMParser.ListLitContext?): AstNode = nonNull(ctx) {
+        ListExpression(it.expr().map { e -> visitRequire<Expression>(e) }, it.toPos(file))
+    }
+
+    override fun visitDictLit(ctx: MMParser.DictLitContext?): AstNode = nonNull(ctx) {
+        DictExpression(it.keys.zip(it.values).map { (k, v) ->
+            val key = visitRequire<Expression>(k ?: throw ParseError("Null key in dictionary expression at ${it.toPos(file)}"))
+            val value = visitRequire<Expression>(v ?: throw ParseError("Null value in dictionary expression at ${it.toPos(file)}"))
+            key to value
+        }, it.toPos(file))
+    }
     //endregion
 
     //region Literals
@@ -322,6 +549,20 @@ class DataLoader(target: String) : MMBaseVisitor<AstNode>() {
         WeightLiteral(temp, it.toPos(file))
     }
 
+    override fun visitCurrencyLit(ctx: MMParser.CurrencyLitContext?): AstNode = nonNull(ctx) {
+        val temp = it.CURRENCY_LIT().text
+        val amount = temp.substring(0 until temp.length - 2).toIntOrNull()
+            ?: throw ParseError("Invalid currency literal: ${it.CURRENCY_LIT().text} at ${it.toPos(file)}")
+        val unit = try {
+            Currency.valueOf(temp.substring(temp.length - 2).uppercase())
+        }
+        catch(e: IllegalArgumentException) {
+            throw ParseError("Invalid currency literal: ${it.CURRENCY_LIT().text} at ${it.toPos(file)}")
+        }
+
+        CurrencyLiteral(amount, unit, it.toPos(file))
+    }
+
     override fun visitStringLit(ctx: MMParser.StringLitContext?): AstNode = nonNull(ctx) {
         visit(it.description())
     }
@@ -340,7 +581,17 @@ class DataLoader(target: String) : MMBaseVisitor<AstNode>() {
     }
     //endregion
 
+    //region Misc
+    override fun visitIdentifierSet(ctx: MMParser.IdentifierSetContext?): AstNode = nonNull(ctx) {
+        TypedListLiteral(it.IDENTIFIER().map { i -> i.text }, it.toPos(file))
+    }
+    //endregion
+
     companion object {
+        private var currentInstance: DataLoader? = null
+
+        fun currentFile() = currentInstance?.file ?: throw ParseError("Not currently parsing a file.")
+
         fun loadFrom(file: String): LoaderResult {
             val error = ParseErrorListener()
 
@@ -356,10 +607,12 @@ class DataLoader(target: String) : MMBaseVisitor<AstNode>() {
 
             val tree = parser.mageProg()
             val loader = DataLoader(file)
+            currentInstance = loader
 
             val res = loader.visitMageProg(tree) as DeclarationSet
             val str = loader.strings
 
+            currentInstance = null
             return LoaderResult(str, res)
         }
 

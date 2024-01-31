@@ -48,6 +48,8 @@ The `action` and `STRING_LIT_action` functions (in MMLexer.kt) take an argument 
 This is never used, but somehow always `null`. 
 The correct type for this argument should be `RuleContext?` instead of `RuleContext`.
 
-## Step 4: Compilation errors
+## Step 4: Compilation errors in MMParser.kt
 Some `when` statements in `MMParser.kt` are missing an `else` branch.
 You can just add an empty one, no problem.
+
+Additionally, the `DictLitContext` has two fields (`keys` and `values`) with the wrong type: both should be a `MutableList<ExprContext?>` instead of a `List<ExprContext>`.

@@ -2,6 +2,11 @@
 package parser.mm
 
 import org.antlr.v4.runtime.tree.AbstractParseTreeVisitor
+import parser.mm.MMParser.FieldDeclContext
+import parser.mm.MMParser.GlobalDeclContext
+import parser.mm.MMParser.GlobalVarContext
+import parser.mm.MMParser.MemberFieldContext
+import parser.mm.MMParser.MemberFuncContext
 
 /**
  * This class provides an empty implementation of [MMVisitor],
@@ -272,6 +277,17 @@ open class MMBaseVisitor<T> : AbstractParseTreeVisitor<T>(), MMVisitor<T> {
      * The default implementation returns the result of calling
      * [.visitChildren] on `ctx`.
      */
+    override fun visitGlobalVar(ctx: GlobalVarContext?): T {
+        return visitChildren(ctx)
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     *
+     * The default implementation returns the result of calling
+     * [.visitChildren] on `ctx`.
+     */
     override fun visitClassDecl(ctx: MMParser.ClassDeclContext?): T {
         return visitChildren(ctx)
     }
@@ -415,7 +431,18 @@ open class MMBaseVisitor<T> : AbstractParseTreeVisitor<T>(), MMVisitor<T> {
      * The default implementation returns the result of calling
      * [.visitChildren] on `ctx`.
      */
-    override fun visitDeclBody(ctx: MMParser.DeclBodyContext?): T {
+    override fun visitMemberFunc(ctx: MemberFuncContext?): T {
+        return visitChildren(ctx)
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     *
+     * The default implementation returns the result of calling
+     * [.visitChildren] on `ctx`.
+     */
+    override fun visitMemberField(ctx: MemberFieldContext?): T {
         return visitChildren(ctx)
     }
 
@@ -427,6 +454,28 @@ open class MMBaseVisitor<T> : AbstractParseTreeVisitor<T>(), MMVisitor<T> {
      * [.visitChildren] on `ctx`.
      */
     override fun visitFunDecl(ctx: MMParser.FunDeclContext?): T {
+        return visitChildren(ctx)
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     *
+     * The default implementation returns the result of calling
+     * [.visitChildren] on `ctx`.
+     */
+    override fun visitFieldDecl(ctx: FieldDeclContext?): T {
+        return visitChildren(ctx)
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     *
+     * The default implementation returns the result of calling
+     * [.visitChildren] on `ctx`.
+     */
+    override fun visitGlobalDecl(ctx: GlobalDeclContext?): T {
         return visitChildren(ctx)
     }
 
@@ -503,6 +552,28 @@ open class MMBaseVisitor<T> : AbstractParseTreeVisitor<T>(), MMVisitor<T> {
      * The default implementation returns the result of calling
      * [.visitChildren] on `ctx`.
      */
+    override fun visitBreakStmt(ctx: MMParser.BreakStmtContext?): T {
+        return visitChildren(ctx)
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     *
+     * The default implementation returns the result of calling
+     * [.visitChildren] on `ctx`.
+     */
+    override fun visitReturnStmt(ctx: MMParser.ReturnStmtContext?): T {
+        return visitChildren(ctx)
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     *
+     * The default implementation returns the result of calling
+     * [.visitChildren] on `ctx`.
+     */
     override fun visitAssignStmt(ctx: MMParser.AssignStmtContext?): T {
         return visitChildren(ctx)
     }
@@ -514,7 +585,18 @@ open class MMBaseVisitor<T> : AbstractParseTreeVisitor<T>(), MMVisitor<T> {
      * The default implementation returns the result of calling
      * [.visitChildren] on `ctx`.
      */
-    override fun visitDotRef(ctx: MMParser.DotRefContext?): T {
+    override fun visitRef(ctx: MMParser.RefContext?): T {
+        return visitChildren(ctx)
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     *
+     * The default implementation returns the result of calling
+     * [.visitChildren] on `ctx`.
+     */
+    override fun visitFieldRef(ctx: MMParser.FieldRefContext?): T {
         return visitChildren(ctx)
     }
 
@@ -536,7 +618,7 @@ open class MMBaseVisitor<T> : AbstractParseTreeVisitor<T>(), MMVisitor<T> {
      * The default implementation returns the result of calling
      * [.visitChildren] on `ctx`.
      */
-    override fun visitNameRef(ctx: MMParser.NameRefContext?): T {
+    override fun visitArgs(ctx: MMParser.ArgsContext?): T {
         return visitChildren(ctx)
     }
 
@@ -547,7 +629,51 @@ open class MMBaseVisitor<T> : AbstractParseTreeVisitor<T>(), MMVisitor<T> {
      * The default implementation returns the result of calling
      * [.visitChildren] on `ctx`.
      */
-    override fun visitArgs(ctx: MMParser.ArgsContext?): T {
+    override fun visitListLit(ctx: MMParser.ListLitContext?): T {
+        return visitChildren(ctx)
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     *
+     * The default implementation returns the result of calling
+     * [.visitChildren] on `ctx`.
+     */
+    override fun visitDotExpr(ctx: MMParser.DotExprContext?): T {
+        return visitChildren(ctx)
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     *
+     * The default implementation returns the result of calling
+     * [.visitChildren] on `ctx`.
+     */
+    override fun visitDictLit(ctx: MMParser.DictLitContext?): T {
+        return visitChildren(ctx)
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     *
+     * The default implementation returns the result of calling
+     * [.visitChildren] on `ctx`.
+     */
+    override fun visitMultExpr(ctx: MMParser.MultExprContext?): T {
+        return visitChildren(ctx)
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     *
+     * The default implementation returns the result of calling
+     * [.visitChildren] on `ctx`.
+     */
+    override fun visitParenExpr(ctx: MMParser.ParenExprContext?): T {
         return visitChildren(ctx)
     }
 
@@ -569,7 +695,7 @@ open class MMBaseVisitor<T> : AbstractParseTreeVisitor<T>(), MMVisitor<T> {
      * The default implementation returns the result of calling
      * [.visitChildren] on `ctx`.
      */
-    override fun visitDotExpr(ctx: MMParser.DotExprContext?): T {
+    override fun visitUnaryExpr(ctx: MMParser.UnaryExprContext?): T {
         return visitChildren(ctx)
     }
 
@@ -625,28 +751,6 @@ open class MMBaseVisitor<T> : AbstractParseTreeVisitor<T>(), MMVisitor<T> {
      * [.visitChildren] on `ctx`.
      */
     override fun visitBoolExpr(ctx: MMParser.BoolExprContext?): T {
-        return visitChildren(ctx)
-    }
-
-    /**
-     * {@inheritDoc}
-     *
-     *
-     * The default implementation returns the result of calling
-     * [.visitChildren] on `ctx`.
-     */
-    override fun visitMultExpr(ctx: MMParser.MultExprContext?): T {
-        return visitChildren(ctx)
-    }
-
-    /**
-     * {@inheritDoc}
-     *
-     *
-     * The default implementation returns the result of calling
-     * [.visitChildren] on `ctx`.
-     */
-    override fun visitParenExpr(ctx: MMParser.ParenExprContext?): T {
         return visitChildren(ctx)
     }
 
