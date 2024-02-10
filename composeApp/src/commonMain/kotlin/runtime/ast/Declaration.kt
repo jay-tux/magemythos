@@ -26,7 +26,8 @@ sealed class BodyDeclaration(pos: Pos) : Declaration(pos)
 class TypeDeclaration(
     val kind: String, val name: String, val tags: List<Tag>, val fields: List<MemberDeclaration>,
     val members: List<FunDeclaration>, pos: Pos
-) : Declaration(pos) {
+) : Declaration(pos)
+{
     @Composable
     override fun ColumnScope.render(indent: Int) {
         var isOpen by remember { mutableStateOf(false) }
@@ -68,7 +69,8 @@ class TypeDeclaration(
 
 class FunDeclaration(
     val name: String, val params: List<String>, val body: List<Statement>, pos: Pos
-) : BodyDeclaration(pos) {
+) : BodyDeclaration(pos)
+{
     @Composable
     override fun ColumnScope.render(indent: Int) {
         var isOpen by remember { mutableStateOf(false) }

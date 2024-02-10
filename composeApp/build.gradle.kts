@@ -29,6 +29,7 @@ kotlin {
         }
         commonMain{
             dependencies {
+                implementation(libs.arrow)
                 implementation(compose.runtime)
                 implementation(compose.foundation)
                 implementation(compose.material)
