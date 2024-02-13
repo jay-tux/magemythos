@@ -73,6 +73,11 @@ class RangeValue(val start: Int, val endIncl: Int, pos: Pos) : Value(pos) {
     override fun equals(other: Any?): Boolean = other is RangeValue && other.start == start && other.endIncl == endIncl
     override fun hashCode(): Int = (start to endIncl to 2).hashCode()
 }
+class VoidValue(pos: Pos) : Value(pos) {
+    override fun toString(): String = "void"
+    override fun equals(other: Any?): Boolean = other is VoidValue
+    override fun hashCode(): Int = 0
+}
 
 class ObjectValue(val type: TypeDeclaration, val value: Map<String, Variable>, pos: Pos) : Value(pos) {
     override fun toString(): String = "{${value.entries.joinToString(", ") { (k, v) -> "$k: $v" }}}"

@@ -1,10 +1,16 @@
 package runtime
 
+import runtime.ast.AssignmentStmt
 import runtime.ast.BinaryExpression
 import runtime.ast.BoolValue
+import runtime.ast.BreakStmt
 import runtime.ast.CallExpression
+import runtime.ast.DeclarationType
+import runtime.ast.ExprStmt
 import runtime.ast.Expression
+import runtime.ast.ForStmt
 import runtime.ast.FunDeclaration
+import runtime.ast.IfStmt
 import runtime.ast.IndexExpression
 import runtime.ast.IntValue
 import runtime.ast.ListExpression
@@ -16,12 +22,18 @@ import runtime.ast.ObjectValue
 import runtime.ast.Pos
 import runtime.ast.RangeExpression
 import runtime.ast.RangeValue
+import runtime.ast.ReturnStmt
+import runtime.ast.Statement
 import runtime.ast.StringValue
 import runtime.ast.TernaryExpression
 import runtime.ast.TypeDeclaration
 import runtime.ast.UnaryExpression
 import runtime.ast.Value
 import runtime.ast.VariableExpression
+import runtime.ast.VoidValue
+import runtime.ast.WhileStmt
+import java.util.Queue
+import java.util.ArrayDeque
 
 sealed class ExecutionIterator {
     abstract fun hasFinished(): Boolean
@@ -35,6 +47,20 @@ sealed class ExprExecutionIterator : ExecutionIterator() {
     fun update(): ExecutionIterator {
         if(!hasFinished()) step()
         return currentlyExecuting()
+    }
+}
+
+sealed class StmtExecutionIterator : ExecutionIterator() {
+    abstract val context: Context
+    var stopped: Boolean = false
+        private set
+
+    protected abstract fun internalFinished(): Boolean
+
+    override fun hasFinished(): Boolean = stopped || internalFinished()
+
+    fun interrupt() {
+        stopped = true
     }
 }
 
@@ -320,33 +346,235 @@ class ExpressionContext(private val parent: Context, private val e: Expression, 
 }
 
 fun FunDeclaration.makeInvocation(thisObj: ObjectValue?, args: List<Value>, at: Pos): Invocation = thisObj?.let {
-    MemberInvocation(this, it, args)
-} ?: NormalInvocation(this, args)
+    MemberInvocation(this, it, args, at)
+} ?: NormalInvocation(this, args, at)
 
 fun TypeDeclaration.makeInvocation(obj: ObjectValue, member: String, args: List<Value>, at: Pos): Invocation =
     members.find { it.name == member }?.makeInvocation(obj, args, at) ?: throw MemberError(member, name, at)
 
-class Context(private val parent: Context? = null, private val thisObj: ObjectValue?, val pos: Pos) {
+class Context(
+    private val cache: ICache, private val parent: Context? = null,
+    private val thisObj: ObjectValue? = null, private val executing: List<Statement>,
+    private val isLoopBase: Boolean = false, private val isFunBase: Boolean = false,
+    val pos: Pos
+) {
     private val locals = thisObj?.value?.toMutableMap() ?: mutableMapOf()
     private val members = thisObj?.type?.members?.associateBy { it.name } ?: mapOf()
 
-    constructor(parent: Context?, pos: Pos) : this(parent, null, pos)
+    private var currentEvaluator: StmtExecutionIterator? = null
+
+    var returnValue: Value? = null
+        private set
+
+    private fun canBreak(): Boolean = isLoopBase || parent?.canBreak() == true
+
+    private fun onReturn(v: Value?) {
+        var curr = this
+
+        do {
+            curr.returnValue = v
+            curr.currentEvaluator?.interrupt()
+            curr = curr.parent ?: break
+        } while(!curr.isFunBase)
+    }
+
+    private fun onBreak(at: Pos) {
+        if(!canBreak()) throw BreakError(at)
+        var curr = this
+
+        do {
+            curr.currentEvaluator?.interrupt()
+            curr = curr.parent ?: break
+        } while(!curr.isLoopBase)
+    }
+
+    private inner class ExprBasedIterator(override val context: Context, e: Expression?, private val at: Pos, private val onFinish: (Value?) -> Unit) : StmtExecutionIterator() {
+        private val it: ExecutionIterator?
+
+        init {
+            it = e?.let {
+                val sub = ExpressionContext(this@Context, it) { i ->
+                    i.checkArgCount() // throws on errors
+                    val args = i.mergeArgs()
+                    when(i) {
+                        is NormalInvocation -> {
+                            val ctx = Context(cache, this@Context, thisObj, i.target.body, false, true, i.pos)
+                            args.forEach { (n, v) -> ctx.declare(n, v.value, true, v.pos) }
+                            ctx.getEvaluator()
+                        }
+                        is MemberInvocation -> {
+                            val ctx = Context(cache, this@Context, i.scope, i.target.body, false, true, i.pos)
+                            args.forEach { (n, v) -> ctx.declare(n, v.value, true, v.pos) }
+                            ctx.getEvaluator()
+                        }
+                        is LibraryInvocation -> {
+                            Library.invoke(i)
+                        }
+                    }
+                }
+                sub.getEvaluator()
+            }
+        }
+
+        override fun internalFinished(): Boolean = it?.hasFinished() ?: true
+
+        override fun step() {
+            it?.step()
+        }
+
+        override fun finalValue(): Value = it?.finalValue() ?: VoidValue(at)
+    }
+
+    private class ValueRef(var v: Value?)
+
+    private inner class StepBasedIterator(override val context: Context, private val at: Pos, val generator: (ValueRef) -> Sequence<ExecutionIterator>) : StmtExecutionIterator() {
+        private val ref = ValueRef(null)
+        private val seq = generator(ref).iterator()
+        private var curr: ExecutionIterator? = null
+
+        override fun internalFinished(): Boolean = !seq.hasNext() && curr?.hasFinished() != false
+
+        override fun step() {
+            if(curr == null || curr?.hasFinished() == true) {
+                ref.v = curr?.finalValue()
+                if(seq.hasNext()) curr = seq.next()
+            }
+
+            curr?.step()
+        }
+
+        override fun finalValue(): Value = curr?.finalValue() ?: VoidValue(at)
+
+    }
+
+    private fun stepInto(e: ExprStmt): ExecutionIterator = ExprBasedIterator(this, e.expr, e.pos) {}
+
+    private fun stepInto(a: AssignmentStmt): ExecutionIterator = ExprBasedIterator(this, a.expr, a.pos) {
+        if(it == null || it is VoidValue)
+            throw NoValueError(a.expr.pos)
+
+        val v = lookup(a.name)
+
+        when(a.type) {
+            DeclarationType.ASSIGN -> {
+                if(v == null) throw VariableError(a.name, a.pos)
+                else v.update(it, a.pos)
+            }
+            else -> {
+                declare(a.name, it, a.type == DeclarationType.CONST, a.pos)
+            }
+        }
+    }
+
+    private fun stepInto(r: ReturnStmt): ExecutionIterator = ExprBasedIterator(this, r.expr, r.pos) {
+        onReturn(it)
+    }
+
+    private fun stepInto(b: BreakStmt): ExecutionIterator = ExprBasedIterator(this, null, b.pos) {
+        onBreak(b.pos)
+    }
+
+    private fun stepInto(c: IfStmt): ExecutionIterator = StepBasedIterator(this, c.pos) { prev ->
+        sequence {
+            yield(ExprBasedIterator(this@Context, c.condition, c.condition.pos) {})
+
+            prev.v?.let {
+                val cond = it.require<BoolValue>("bool", c.condition.pos).value
+                if(cond)
+                    yield(Context(cache, this@Context, thisObj, c.bodyTrue, pos = c.pos).getEvaluator())
+                else if(c.bodyFalse != null)
+                    yield(Context(cache, this@Context, thisObj, c.bodyFalse, pos = c.pos).getEvaluator())
+            } ?: throw RuntimeInternalError("Null-result in if's condition")
+        }
+    }
+
+    private fun stepInto(c: WhileStmt): ExecutionIterator = StepBasedIterator(this, c.pos) { prev ->
+        val check = {
+            prev.v?.require<BoolValue>("bool", c.condition.pos)?.value ?:
+                throw RuntimeInternalError("Null-value in while's condition")
+        }
+
+        sequence {
+            yield(ExprBasedIterator(this@Context, c.condition, c.condition.pos) {})
+            while(check()) {
+                val it = Context(cache, this@Context, thisObj, c.body, true, pos = c.pos).getEvaluator()
+                yield(it)
+                if(it.stopped) break
+
+                yield(ExprBasedIterator(this@Context, c.condition, c.condition.pos) {})
+            }
+        }
+    }
+
+    private fun stepInto(c: ForStmt): ExecutionIterator = StepBasedIterator(this, c.pos) { prev ->
+        sequence {
+            yield(ExprBasedIterator(this@Context, c.set, c.set.pos) {})
+            val set = prev.v ?: throw RuntimeInternalError("Null-value in for's set")
+
+            set.requireOrNull<ListValue>()?.let {
+                for(v in it.value) {
+                    val ctx = Context(cache, this@Context, thisObj, c.body, true, pos = c.pos)
+                    ctx.declare(c.name, v, true, c.set.pos)
+                    val iter = ctx.getEvaluator()
+                    yield(iter)
+
+                    if(iter.stopped) break
+                }
+            } ?: set.require<RangeValue>("list or range", set.pos).let {
+                var i = it.start
+                while(i <= it.endIncl) {
+                    val ctx = Context(cache, this@Context, thisObj, c.body, true, pos = c.pos)
+                    ctx.declare(c.name, IntValue(i, c.set.pos), true, c.set.pos)
+                    val iter = ctx.getEvaluator()
+                    yield(iter)
+
+                    if(iter.stopped) break
+                    i++
+                }
+            }
+        }
+    }
 
     fun lookup(name: String): Variable? {
-        return locals[name] ?: parent?.lookup(name)
+        return locals[name] ?: if(parent == null) cache.getGlobal(name) else parent.lookup(name)
+    }
+
+    fun declare(name: String, value: Value, immutable: Boolean, at: Pos) {
+        locals[name]?.let {
+            throw RedeclarationError(name, it.pos, at)
+        } ?: locals.put(name, Variable(name, value, !immutable, at))
     }
 
     fun getInvocation(name: String, args: List<Value>, pos: Pos): Invocation {
         return members[name]?.makeInvocation(thisObj ?: throw RuntimeInternalError("No thisObj when invoking a member function"), args, pos) ?:
-        // TODO: try to find it as a global function
-        // TODO: try to find it as a library function
+            cache.getFunction(name)?.makeInvocation(null, args, pos) ?:
+            Library.invocationFor(name, args, pos) ?:
             throw MethodError(name, pos)
     }
 
-    fun getEvaluator(): ExecutionIterator = TODO()
+    fun getEvaluator(): StmtExecutionIterator = StepBasedIterator(this, pos) {
+        sequence {
+            for(s in executing) {
+                yield(when(s) {
+                    is ExprStmt -> stepInto(s)
+                    is AssignmentStmt -> stepInto(s)
+                    is ReturnStmt -> stepInto(s)
+                    is BreakStmt -> stepInto(s)
+                    is IfStmt -> stepInto(s)
+                    is WhileStmt -> stepInto(s)
+                    is ForStmt -> stepInto(s)
+                })
+            }
+        }
+    }
 }
 
-class Variable(val name: String, v: Value, val mutable: Boolean, pos: Pos) {
+class Variable(val name: String, v: Value, val mutable: Boolean, val pos: Pos) {
     var value: Value = v
         private set
+
+    fun update(v: Value, at: Pos) {
+        if(mutable) value = v
+        else throw ImmutableError(name, at)
+    }
 }

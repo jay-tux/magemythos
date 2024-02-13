@@ -21,3 +21,24 @@ class MethodError(name: String, pos: Pos) :
 
 class MemberError(name: String, type: String, pos: Pos) :
         RuntimeError("Member function '$name' does not exist on $type; at $pos")
+
+class ImmutableError(name: String, pos: Pos) :
+        RuntimeError("Variable '$name' is immutable; at $pos")
+
+class RedeclarationError(name: String, declPos: Pos, pos: Pos) :
+        RuntimeError("Redeclaration of '$name' at $pos; previous declaration at $declPos")
+
+class NoValueError(pos: Pos) :
+        RuntimeError("Assignment/Declaration requires a value, none given at $pos")
+
+class BreakError(pos: Pos) :
+        RuntimeError("Can't break when not inside a loop, at $pos")
+
+class ArgumentCountError(name: String, got: Int, required: Int, pos: Pos) :
+        RuntimeError("Wrong number of arguments for '$name': got $got, but requires $required; at $pos")
+
+class ScopeException(call: String, pos: Pos) :
+        RuntimeError("Library function $call requires a character scope, none available at $pos")
+
+class ChoiceException(pos: Pos) :
+        RuntimeError("Choice with zero options at $pos")

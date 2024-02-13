@@ -147,8 +147,6 @@ enum class BinaryOperator {
 }
 
 sealed class Expression(pos: Pos) : Node(pos) {
-    abstract fun evaluate(ctx: Context): Value
-
     @Composable
     abstract fun ColumnScope.render(indent: Int)
 
@@ -161,8 +159,6 @@ sealed class Expression(pos: Pos) : Node(pos) {
 sealed class RecursiveExpression(pos: Pos) : Expression(pos)
 
 class LiteralExpression(val value: Value, pos: Pos): Expression(pos) {
-    override fun evaluate(ctx: Context): Value = value
-
     @Composable
     override fun ColumnScope.render(indent: Int) = indented(indent) {
         Text(value.toString())
@@ -170,8 +166,6 @@ class LiteralExpression(val value: Value, pos: Pos): Expression(pos) {
 }
 
 class VariableExpression(val name: String, pos: Pos): Expression(pos) {
-    override fun evaluate(ctx: Context): Value = TODO()
-
     @Composable
     override fun ColumnScope.render(indent: Int) = indented(indent) {
         Text(name)
@@ -179,8 +173,6 @@ class VariableExpression(val name: String, pos: Pos): Expression(pos) {
 }
 
 class ListExpression(val values: List<Expression>, pos: Pos): RecursiveExpression(pos) {
-    override fun evaluate(ctx: Context): Value = ListValue(values.map { it.evaluate(ctx) }, pos)
-
     @Composable
     override fun ColumnScope.render(indent: Int) {
         var showValues by remember { mutableStateOf(false) }
@@ -194,8 +186,6 @@ class ListExpression(val values: List<Expression>, pos: Pos): RecursiveExpressio
 }
 
 class CallExpression(val name: String, val args: List<Expression>, pos: Pos): Expression(pos) {
-    override fun evaluate(ctx: Context): Value = TODO()
-
     @Composable
     override fun ColumnScope.render(indent: Int) {
         var showValues by remember { mutableStateOf(false) }
@@ -210,8 +200,6 @@ class CallExpression(val name: String, val args: List<Expression>, pos: Pos): Ex
 }
 
 class UnaryExpression(val op: UnaryOperator, val target: Expression, pos: Pos): Expression(pos) {
-    override fun evaluate(ctx: Context): Value = TODO()
-
     @Composable
     override fun ColumnScope.render(indent: Int) {
         var showTarget by remember { mutableStateOf(false) }
@@ -226,8 +214,6 @@ class UnaryExpression(val op: UnaryOperator, val target: Expression, pos: Pos): 
 }
 
 class BinaryExpression(val op: BinaryOperator, val left: Expression, val right: Expression, pos: Pos): Expression(pos) {
-    override fun evaluate(ctx: Context): Value = TODO()
-
     @Composable
     override fun ColumnScope.render(indent: Int) {
         var showArgs by remember { mutableStateOf(false) }
@@ -243,8 +229,6 @@ class BinaryExpression(val op: BinaryOperator, val left: Expression, val right: 
 }
 
 class TernaryExpression(val cond: Expression, val bTrue: Expression, val bFalse: Expression, pos: Pos): Expression(pos) {
-    override fun evaluate(ctx: Context): Value = TODO()
-
     @Composable
     override fun ColumnScope.render(indent: Int) {
         var showArgs by remember { mutableStateOf(false) }
@@ -261,8 +245,6 @@ class TernaryExpression(val cond: Expression, val bTrue: Expression, val bFalse:
 }
 
 class IndexExpression(val target: Expression, val index: Expression, pos: Pos): Expression(pos) {
-    override fun evaluate(ctx: Context): Value = TODO()
-
     @Composable
     override fun ColumnScope.render(indent: Int) {
         var showArgs by remember { mutableStateOf(false) }
@@ -278,8 +260,6 @@ class IndexExpression(val target: Expression, val index: Expression, pos: Pos): 
 }
 
 class MemberExpression(val target: Expression, val member: String, pos: Pos): Expression(pos) {
-    override fun evaluate(ctx: Context): Value = TODO()
-
     @Composable
     override fun ColumnScope.render(indent: Int) {
         var showArgs by remember { mutableStateOf(false) }
@@ -297,8 +277,6 @@ class MemberExpression(val target: Expression, val member: String, pos: Pos): Ex
 }
 
 class MemberCallExpression(val target: Expression, val member: String, val args: List<Expression>, pos: Pos): Expression(pos) {
-    override fun evaluate(ctx: Context): Value = TODO()
-
     @Composable
     override fun ColumnScope.render(indent: Int) {
         var showArgs by remember { mutableStateOf(false) }
@@ -317,8 +295,6 @@ class MemberCallExpression(val target: Expression, val member: String, val args:
 }
 
 class RangeExpression(val start: Expression, val end: Expression, val inclusive: Boolean, pos: Pos): Expression(pos) {
-    override fun evaluate(ctx: Context): Value = TODO()
-
     @Composable
     override fun ColumnScope.render(indent: Int) {
         var showArgs by remember { mutableStateOf(false) }
