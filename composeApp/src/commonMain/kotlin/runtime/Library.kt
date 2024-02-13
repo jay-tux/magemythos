@@ -1,11 +1,12 @@
 package runtime
 
+import runtime.ast.ListValue
 import runtime.ast.Pos
 import runtime.ast.Value
 import runtime.ast.VoidValue
 
 data class Choice(val name: String, val desc: String, val corresponding: Value)
-typealias ChoiceScope = (title: String, options: List<Choice>) -> Choice
+typealias ChoiceScope = (title: String, count: Int, options: List<Choice>) -> List<Choice>
 typealias LibraryFunc = ExecutionIterator.(List<Value>, at: Pos) -> ExprExecutionIterator
 
 object Library {
@@ -20,12 +21,15 @@ object Library {
 
         override fun finalValue(): Value = result
     }
-    private class ChoiceIterator(val title: String, val options: List<Choice>, override val parent: ExecutionIterator, pos: Pos) : ExprExecutionIterator() {
-        var chosen: Choice? = null
+    private class ChoiceIterator(val title: String, val options: List<Choice>, val count: Int, override val parent: ExecutionIterator, val pos: Pos) : ExprExecutionIterator() {
+        var chosen: Value? = null
 
         init {
-            if(options.isEmpty()) throw ChoiceException(pos)
-            if(options.size == 1) chosen = options[0]
+            if(options.size < count) throw ChoiceException(count, options.size, pos)
+            if(options.size == count) {
+                chosen = if(count == 1) options[0].corresponding
+                else ListValue(options.map { it.corresponding }, pos)
+            }
         }
 
         override fun currentlyExecuting(): ExecutionIterator = this
@@ -33,10 +37,14 @@ object Library {
         override fun hasFinished(): Boolean = chosen != null
 
         override fun step() {
-            if(!hasFinished()) withChoices { chosen = this@withChoices(title, options) }
+            if(!hasFinished()) withChoices {
+                val temp = this@withChoices(title, count, options)
+                chosen = if(temp.size == 1) temp[0].corresponding else ListValue(temp.map { it.corresponding }, pos)
+
+            }
         }
 
-        override fun finalValue(): Value = chosen?.corresponding ?: throw RuntimeInternalError("Choice not made but result requested")
+        override fun finalValue(): Value = chosen ?: throw RuntimeInternalError("Choice not made but result requested")
     }
 
     var character: Character? = null

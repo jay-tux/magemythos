@@ -40,5 +40,5 @@ class ArgumentCountError(name: String, got: Int, required: Int, pos: Pos) :
 class ScopeException(call: String, pos: Pos) :
         RuntimeError("Library function $call requires a character scope, none available at $pos")
 
-class ChoiceException(pos: Pos) :
-        RuntimeError("Choice with zero options at $pos")
+class ChoiceException(required: Int, got: Int, pos: Pos) :
+        RuntimeError("Impossible choice at $pos: user should choose $required options, but only $got are given")
