@@ -15,3 +15,8 @@ class LiteralError(expected: String, actual: String, pos: Pos) :
     AstError("Invalid literal, expected a(n) $expected, got '$actual' at $pos")
 
 class SyntaxError(message: String, pos: Pos) : AstError("$message at $pos")
+
+class InvalidTagError(name: String, pos: Pos) : AstError("Tag '$name' does not exist; attempted to use at $pos")
+
+class TagArgumentError(name: String, req: Int, got: Int, pos: Pos) :
+        AstError("Tag '$name' requires $req arguments, got $got at $pos")

@@ -408,7 +408,7 @@ class Context(
                             ctx.getEvaluator()
                         }
                         is LibraryInvocation -> {
-                            Library.invoke(i)
+                            Library.invoke(i, this)
                         }
                     }
                 }

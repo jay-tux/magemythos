@@ -10,14 +10,10 @@ import androidx.compose.ui.Modifier
 import org.antlr.v4.runtime.BaseErrorListener
 import org.antlr.v4.runtime.CharStreams
 import org.antlr.v4.runtime.CommonTokenStream
-import org.antlr.v4.runtime.Parser
 import org.antlr.v4.runtime.ParserRuleContext
 import org.antlr.v4.runtime.RecognitionException
 import org.antlr.v4.runtime.Recognizer
 import org.antlr.v4.runtime.Token
-import org.antlr.v4.runtime.atn.ATNConfigSet
-import org.antlr.v4.runtime.dfa.DFA
-import runtime.ast.BinaryOperator.Companion.match
 import runtime.ast.DiceValue.Companion.toDiceOrNull
 import runtime.ast.RollValue.Companion.toRollOrNull
 import runtime.parser.MMBaseVisitor
@@ -25,7 +21,6 @@ import runtime.parser.MMLexer
 import runtime.parser.MMParser
 import ui.indented
 import java.io.InputStream
-import java.util.BitSet
 
 typealias Provider = (source: String, file: String) -> InputStream
 
@@ -548,5 +543,6 @@ class AstBuilder(private val sourceFile: String) : MMBaseVisitor<Node>() {
         }
 
         // TODO: load recursive with dependencies
+        // TODO: after loading everything, finalize all types
     }
 }

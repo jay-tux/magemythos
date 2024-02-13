@@ -1,6 +1,5 @@
 package runtime.ast
 
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
@@ -28,6 +27,10 @@ class TypeDeclaration(
     val members: List<FunDeclaration>, pos: Pos
 ) : Declaration(pos)
 {
+    fun finalize() {
+        tags.forEach { TagEffect.applyTag(this, it.name, it.arguments, it.pos) }
+    }
+
     @Composable
     override fun ColumnScope.render(indent: Int) {
         var isOpen by remember { mutableStateOf(false) }
