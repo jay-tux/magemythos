@@ -6,10 +6,16 @@ import runtime.ast.Value
 import runtime.ast.VoidValue
 
 data class Choice(val name: String, val desc: String, val corresponding: Value)
-typealias ChoiceScope = (title: String, count: Int, options: List<Choice>) -> List<Choice>
+interface ChoiceScope {
+    operator fun invoke(name: String, title: String, count: Int, options: List<Choice>, post: (List<Choice>) -> Unit)
+}
 typealias LibraryFunc = ExecutionIterator.(List<Value>, at: Pos) -> ExprExecutionIterator
 
 object Library {
+    private object Implementations {
+
+    }
+
     private class FinishedIterator(val result: Value, override val parent: ExecutionIterator) : ExprExecutionIterator() {
         override fun currentlyExecuting(): ExecutionIterator = this
 
@@ -21,7 +27,7 @@ object Library {
 
         override fun finalValue(): Value = result
     }
-    private class ChoiceIterator(val title: String, val options: List<Choice>, val count: Int, override val parent: ExecutionIterator, val pos: Pos) : ExprExecutionIterator() {
+    private class ChoiceIterator(val name: String, val title: String, val options: List<Choice>, val count: Int, override val parent: ExecutionIterator, val pos: Pos) : ExprExecutionIterator() {
         var chosen: Value? = null
 
         init {
@@ -37,14 +43,22 @@ object Library {
         override fun hasFinished(): Boolean = chosen != null
 
         override fun step() {
-            if(!hasFinished()) withChoices {
-                val temp = this@withChoices(title, count, options)
-                chosen = if(temp.size == 1) temp[0].corresponding else ListValue(temp.map { it.corresponding }, pos)
-
+            if(!hasFinished()) {
+                withChoices {
+                    val temp = this@withChoices(name, title, count, options) { chosen =
+                        if (it.size == 1) it[0].corresponding else ListValue(
+                            it.map { x -> x.corresponding },
+                            pos
+                        )
+                    }
+                }
             }
         }
 
-        override fun finalValue(): Value = chosen ?: throw RuntimeInternalError("Choice not made but result requested")
+        override fun finalValue(): Value = chosen?.let {
+            withCharacter("<_internal::storeChoice>", pos) { registerChoice(name, it) }
+            it
+        } ?: throw RuntimeInternalError("Choice not made but result requested")
     }
 
     var character: Character? = null

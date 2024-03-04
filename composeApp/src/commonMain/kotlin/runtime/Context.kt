@@ -1,5 +1,6 @@
 package runtime
 
+import ILogger
 import runtime.ast.AssignmentStmt
 import runtime.ast.BinaryExpression
 import runtime.ast.BoolValue
@@ -10,12 +11,14 @@ import runtime.ast.ExprStmt
 import runtime.ast.Expression
 import runtime.ast.ForStmt
 import runtime.ast.FunDeclaration
+import runtime.ast.GlobalDeclaration
 import runtime.ast.IfStmt
 import runtime.ast.IndexExpression
 import runtime.ast.IntValue
 import runtime.ast.ListExpression
 import runtime.ast.ListValue
 import runtime.ast.LiteralExpression
+import runtime.ast.MappedIntExpression
 import runtime.ast.MemberCallExpression
 import runtime.ast.MemberExpression
 import runtime.ast.ObjectValue
@@ -39,6 +42,11 @@ sealed class ExecutionIterator {
     abstract fun hasFinished(): Boolean
     abstract fun step()
     abstract fun finalValue(): Value
+
+    fun runUntilCompletion(): Value {
+        while(!hasFinished()) step()
+        return finalValue()
+    }
 }
 
 sealed class ExprExecutionIterator : ExecutionIterator() {
@@ -191,7 +199,27 @@ class ExpressionContext(private val parent: Context, private val e: Expression, 
                 ) { subExpr.op.withValue(it[0], subExpr.pos) }
             )
 
-            is VariableExpression -> onFinish(parent.lookup(subExpr.name)?.value ?: throw VariableError(subExpr.name, subExpr.pos))
+            is VariableExpression ->
+                parent.lookup(subExpr.name)?.value?.let(onFinish) ?:
+                Runtime.getCache().getType(subExpr.name)?.construct(subExpr.pos) { exprs, after ->
+                    CallbackIterator(par, PartialIterator(par, mutableListOf(), exprs.toMutableList(), subExpr.pos)) { after(it) }
+                }?.let(onRecurse) ?: let {
+                    throw VariableError(subExpr.name, subExpr.pos)
+                }
+
+            is MappedIntExpression -> onRecurse(
+                CallbackIterator(
+                    par,
+                    PartialIterator(
+                        par,
+                        mutableListOf(),
+                        mutableListOf(subExpr.target),
+                        subExpr.pos
+                    )
+                ) {
+                    it[0].require<IntValue>("int", it[0].pos).let { i -> subExpr.map(i) }
+                }
+            )
         }
     }
 
@@ -232,6 +260,8 @@ class ExpressionContext(private val parent: Context, private val e: Expression, 
                     it.step()
                 }
             } ?: run {
+                if(todo.isEmpty()) return@run
+
                 val next = todo.removeAt(0)
                 getEvaluator(this, next, { done.add(it) }){ waitingFor = it }
             }
@@ -349,15 +379,16 @@ fun FunDeclaration.makeInvocation(thisObj: ObjectValue?, args: List<Value>, at: 
     MemberInvocation(this, it, args, at)
 } ?: NormalInvocation(this, args, at)
 
-fun TypeDeclaration.makeInvocation(obj: ObjectValue, member: String, args: List<Value>, at: Pos): Invocation =
+fun Type.makeInvocation(obj: ObjectValue, member: String, args: List<Value>, at: Pos): Invocation =
     members.find { it.name == member }?.makeInvocation(obj, args, at) ?: throw MemberError(member, name, at)
 
 class Context(
-    private val cache: ICache, private val parent: Context? = null,
+    private val parent: Context? = null,
     private val thisObj: ObjectValue? = null, private val executing: List<Statement>,
     private val isLoopBase: Boolean = false, private val isFunBase: Boolean = false,
     val pos: Pos
-) {
+)
+{
     private val locals = thisObj?.value?.toMutableMap() ?: mutableMapOf()
     private val members = thisObj?.type?.members?.associateBy { it.name } ?: mapOf()
 
@@ -398,12 +429,12 @@ class Context(
                     val args = i.mergeArgs()
                     when(i) {
                         is NormalInvocation -> {
-                            val ctx = Context(cache, this@Context, thisObj, i.target.body, false, true, i.pos)
+                            val ctx = Context(this@Context, thisObj, i.target.body, false, true, i.pos)
                             args.forEach { (n, v) -> ctx.declare(n, v.value, true, v.pos) }
                             ctx.getEvaluator()
                         }
                         is MemberInvocation -> {
-                            val ctx = Context(cache, this@Context, i.scope, i.target.body, false, true, i.pos)
+                            val ctx = Context(this@Context, i.scope, i.target.body, false, true, i.pos)
                             args.forEach { (n, v) -> ctx.declare(n, v.value, true, v.pos) }
                             ctx.getEvaluator()
                         }
@@ -481,9 +512,9 @@ class Context(
             prev.v?.let {
                 val cond = it.require<BoolValue>("bool", c.condition.pos).value
                 if(cond)
-                    yield(Context(cache, this@Context, thisObj, c.bodyTrue, pos = c.pos).getEvaluator())
+                    yield(Context(this@Context, thisObj, c.bodyTrue, pos = c.pos).getEvaluator())
                 else if(c.bodyFalse != null)
-                    yield(Context(cache, this@Context, thisObj, c.bodyFalse, pos = c.pos).getEvaluator())
+                    yield(Context(this@Context, thisObj, c.bodyFalse, pos = c.pos).getEvaluator())
             } ?: throw RuntimeInternalError("Null-result in if's condition")
         }
     }
@@ -497,7 +528,7 @@ class Context(
         sequence {
             yield(ExprBasedIterator(this@Context, c.condition, c.condition.pos) {})
             while(check()) {
-                val it = Context(cache, this@Context, thisObj, c.body, true, pos = c.pos).getEvaluator()
+                val it = Context(this@Context, thisObj, c.body, true, pos = c.pos).getEvaluator()
                 yield(it)
                 if(it.stopped) break
 
@@ -513,7 +544,7 @@ class Context(
 
             set.requireOrNull<ListValue>()?.let {
                 for(v in it.value) {
-                    val ctx = Context(cache, this@Context, thisObj, c.body, true, pos = c.pos)
+                    val ctx = Context(this@Context, thisObj, c.body, true, pos = c.pos)
                     ctx.declare(c.name, v, true, c.set.pos)
                     val iter = ctx.getEvaluator()
                     yield(iter)
@@ -523,7 +554,7 @@ class Context(
             } ?: set.require<RangeValue>("list or range", set.pos).let {
                 var i = it.start
                 while(i <= it.endIncl) {
-                    val ctx = Context(cache, this@Context, thisObj, c.body, true, pos = c.pos)
+                    val ctx = Context(this@Context, thisObj, c.body, true, pos = c.pos)
                     ctx.declare(c.name, IntValue(i, c.set.pos), true, c.set.pos)
                     val iter = ctx.getEvaluator()
                     yield(iter)
@@ -536,7 +567,7 @@ class Context(
     }
 
     fun lookup(name: String): Variable? {
-        return locals[name] ?: if(parent == null) cache.getGlobal(name) else parent.lookup(name)
+        return locals[name] ?: if(parent == null) Runtime.getCache().getGlobal(name) else parent.lookup(name)
     }
 
     fun declare(name: String, value: Value, immutable: Boolean, at: Pos) {
@@ -547,7 +578,7 @@ class Context(
 
     fun getInvocation(name: String, args: List<Value>, pos: Pos): Invocation {
         return members[name]?.makeInvocation(thisObj ?: throw RuntimeInternalError("No thisObj when invoking a member function"), args, pos) ?:
-            cache.getFunction(name)?.makeInvocation(null, args, pos) ?:
+            Runtime.getCache().getFunction(name)?.makeInvocation(null, args, pos) ?:
             Library.invocationFor(name, args, pos) ?:
             throw MethodError(name, pos)
     }
@@ -576,5 +607,13 @@ class Variable(val name: String, v: Value, val mutable: Boolean, val pos: Pos) {
     fun update(v: Value, at: Pos) {
         if(mutable) value = v
         else throw ImmutableError(name, at)
+    }
+
+    companion object {
+        fun GlobalDeclaration.toVariable(): Variable {
+            val ctx = Context(executing = listOf(ReturnStmt(value, value.pos)), pos = pos)
+            val eval = ctx.getEvaluator()
+            return Variable(name, eval.runUntilCompletion(), true, pos)
+        }
     }
 }

@@ -89,7 +89,7 @@ class MMParser(input: TokenStream?) : Parser(input) {
                 state = 32
                 _errHandler.sync(this)
                 _la = _input.LA(1)
-                while (_la and 0x3f.inv() == 0 && 1L shl _la and 143005231087616L != 0L) {
+                while (_la and 0x3f.inv() == 0 && 1L shl _la and 567485438885888L != 0L) {
                     run {
                         run {
                             state = 29
@@ -421,6 +421,28 @@ class MMParser(input: TokenStream?) : Parser(input) {
         }
     }
 
+    class SimpleMultipleDeclContext(ctx: DeclarationContext?) : DeclarationContext() {
+        var kind: Token? = null
+        var names: IdListContext? = null
+        fun ID(): TerminalNode {
+            return getToken(ID, 0)
+        }
+
+        fun idList(): IdListContext {
+            return getRuleContext(IdListContext::class.java, 0)
+        }
+
+        init {
+            copyFrom(ctx)
+        }
+
+        override fun <T> accept(visitor: ParseTreeVisitor<out T>): T {
+            return if (visitor is MMVisitor<*>) (visitor as MMVisitor<out T>).visitSimpleMultipleDecl(
+                this
+            ) else visitor.visitChildren(this)
+        }
+    }
+
     class GlobalContext(ctx: DeclarationContext?) : DeclarationContext() {
         fun globalDecl(): GlobalDeclContext {
             return getRuleContext(GlobalDeclContext::class.java, 0)
@@ -478,7 +500,7 @@ class MMParser(input: TokenStream?) : Parser(input) {
         enterRule(_localctx, 8, RULE_declaration)
         var _la: Int
         try {
-            state = 89
+            state = 91
             _errHandler.sync(this)
             when (interpreter.adaptivePredict(_input, 7, _ctx)) {
                 1 -> {
@@ -523,7 +545,7 @@ class MMParser(input: TokenStream?) : Parser(input) {
                         state = 75
                         _errHandler.sync(this)
                         _la = _input.LA(1)
-                        while (_la and 0x3f.inv() == 0 && 1L shl _la and 2405181685760L != 0L) {
+                        while (_la and 0x3f.inv() == 0 && 1L shl _la and 4810363371520L != 0L) {
                             run {
                                 run {
                                     state = 72
@@ -541,45 +563,56 @@ class MMParser(input: TokenStream?) : Parser(input) {
                 }
 
                 3 -> {
-                    _localctx = MultipleDeclContext(_localctx)
+                    _localctx = SimpleMultipleDeclContext(_localctx)
                     enterOuterAlt(_localctx, 3)
                     run {
                         state = 79
-                        (_localctx as MultipleDeclContext).kind = match(ID)
+                        (_localctx as SimpleMultipleDeclContext).kind = match(ID)
                         state = 80
-                        match(PO)
+                        (_localctx as SimpleMultipleDeclContext).names = idList()
+                    }
+                }
+
+                4 -> {
+                    _localctx = MultipleDeclContext(_localctx)
+                    enterOuterAlt(_localctx, 4)
+                    run {
                         state = 81
-                        (_localctx as MultipleDeclContext).names = idList()
+                        (_localctx as MultipleDeclContext).kind = match(ID)
                         state = 82
-                        match(PC)
+                        match(PO)
                         state = 83
-                        match(T__2)
+                        (_localctx as MultipleDeclContext).names = idList()
+                        state = 84
+                        match(PC)
                         state = 85
+                        match(T__2)
+                        state = 87
                         _errHandler.sync(this)
                         _la = _input.LA(1)
                         if (_la == TAGNAME) {
                             run {
-                                state = 84
+                                state = 86
                                 (_localctx as MultipleDeclContext).tags = tagList()
                             }
                         }
                     }
                 }
 
-                4 -> {
+                5 -> {
                     _localctx = FunctionContext(_localctx)
-                    enterOuterAlt(_localctx, 4)
+                    enterOuterAlt(_localctx, 5)
                     run {
-                        state = 87
+                        state = 89
                         funDecl()
                     }
                 }
 
-                5 -> {
+                6 -> {
                     _localctx = GlobalContext(_localctx)
-                    enterOuterAlt(_localctx, 5)
+                    enterOuterAlt(_localctx, 6)
                     run {
-                        state = 88
+                        state = 90
                         globalDecl()
                     }
                 }
@@ -679,14 +712,14 @@ class MMParser(input: TokenStream?) : Parser(input) {
         var _localctx = BodyDeclContext(_ctx, state)
         enterRule(_localctx, 10, RULE_bodyDecl)
         try {
-            state = 99
+            state = 101
             _errHandler.sync(this)
             when (_input.LA(1)) {
                 FUN -> {
                     _localctx = MemberFuncContext(_localctx)
                     enterOuterAlt(_localctx, 1)
                     run {
-                        state = 91
+                        state = 93
                         funDecl()
                     }
                 }
@@ -695,7 +728,7 @@ class MMParser(input: TokenStream?) : Parser(input) {
                     _localctx = MemberConstContext(_localctx)
                     enterOuterAlt(_localctx, 2)
                     run {
-                        state = 92
+                        state = 94
                         globalDecl()
                     }
                 }
@@ -704,15 +737,15 @@ class MMParser(input: TokenStream?) : Parser(input) {
                     _localctx = MemberFieldContext(_localctx)
                     enterOuterAlt(_localctx, 3)
                     run {
-                        state = 93
-                        match(VAR)
-                        state = 94
-                        _localctx.name = match(ID)
                         state = 95
-                        match(EQ)
+                        match(VAR)
                         state = 96
-                        _localctx.value = expr(0)
+                        _localctx.name = match(ID)
                         state = 97
+                        match(EQ)
+                        state = 98
+                        _localctx.value = expr(0)
+                        state = 99
                         match(SEMI)
                     }
                 }
@@ -763,7 +796,7 @@ class MMParser(input: TokenStream?) : Parser(input) {
             return getRuleContext(IdListContext::class.java, 0)
         }
 
-        fun stmt(): List<StmtContext> {
+        fun stmt(): MutableList<StmtContext?> {
             return getRuleContexts(StmtContext::class.java)
         }
 
@@ -790,41 +823,41 @@ class MMParser(input: TokenStream?) : Parser(input) {
         try {
             enterOuterAlt(_localctx, 1)
             run {
-                state = 101
-                match(FUN)
-                state = 102
-                _localctx.name = match(ID)
                 state = 103
-                match(PO)
+                match(FUN)
+                state = 104
+                _localctx.name = match(ID)
                 state = 105
+                match(PO)
+                state = 107
                 _errHandler.sync(this)
                 _la = _input.LA(1)
                 if (_la == ID) {
                     run {
-                        state = 104
+                        state = 106
                         _localctx.args = idList()
                     }
                 }
-                state = 107
+                state = 109
                 match(PC)
-                state = 108
+                state = 110
                 match(BO)
-                state = 112
+                state = 114
                 _errHandler.sync(this)
                 _la = _input.LA(1)
-                while (_la and 0x3f.inv() == 0 && 1L shl _la and 1055170458812528L != 0L) {
+                while (_la and 0x3f.inv() == 0 && 1L shl _la and 8584265384067184L != 0L) {
                     run {
                         run {
-                            state = 109
+                            state = 111
                             _localctx.stmt = stmt()
                             _localctx.body.add(_localctx.stmt)
                         }
                     }
-                    state = 114
+                    state = 116
                     _errHandler.sync(this)
                     _la = _input.LA(1)
                 }
-                state = 115
+                state = 117
                 match(BC)
             }
         } catch (re: RecognitionException) {
@@ -879,15 +912,15 @@ class MMParser(input: TokenStream?) : Parser(input) {
         try {
             enterOuterAlt(_localctx, 1)
             run {
-                state = 117
-                match(CONST)
-                state = 118
-                _localctx.name = match(ID)
                 state = 119
-                match(EQ)
+                match(CONST)
                 state = 120
-                _localctx.value = expr(0)
+                _localctx.name = match(ID)
                 state = 121
+                match(EQ)
+                state = 122
+                _localctx.value = expr(0)
+                state = 123
                 match(SEMI)
             }
         } catch (re: RecognitionException) {
@@ -904,7 +937,7 @@ class MMParser(input: TokenStream?) : Parser(input) {
         ParserRuleContext(parent, invokingState) {
         var tag: TagContext? = null
         var tags: MutableList<TagContext?> = ArrayList()
-        fun tag(): List<TagContext> {
+        fun tag(): MutableList<TagContext?> {
             return getRuleContexts(TagContext::class.java)
         }
 
@@ -931,18 +964,18 @@ class MMParser(input: TokenStream?) : Parser(input) {
         try {
             enterOuterAlt(_localctx, 1)
             run {
-                state = 124
+                state = 126
                 _errHandler.sync(this)
                 _la = _input.LA(1)
                 do {
                     run {
                         run {
-                            state = 123
+                            state = 125
                             _localctx.tag = tag()
                             _localctx.tags.add(_localctx.tag)
                         }
                     }
-                    state = 126
+                    state = 128
                     _errHandler.sync(this)
                     _la = _input.LA(1)
                 } while (_la == TAGNAME)
@@ -1024,14 +1057,14 @@ class MMParser(input: TokenStream?) : Parser(input) {
         enterRule(_localctx, 18, RULE_tag)
         var _la: Int
         try {
-            state = 135
+            state = 137
             _errHandler.sync(this)
             when (interpreter.adaptivePredict(_input, 13, _ctx)) {
                 1 -> {
                     _localctx = SimpleTagContext(_localctx)
                     enterOuterAlt(_localctx, 1)
                     run {
-                        state = 128
+                        state = 130
                         (_localctx as SimpleTagContext).name = match(TAGNAME)
                     }
                 }
@@ -1040,20 +1073,20 @@ class MMParser(input: TokenStream?) : Parser(input) {
                     _localctx = ParamTagContext(_localctx)
                     enterOuterAlt(_localctx, 2)
                     run {
-                        state = 129
+                        state = 131
                         _localctx.name = match(TAGNAME)
-                        state = 130
-                        match(PO)
                         state = 132
+                        match(PO)
+                        state = 134
                         _errHandler.sync(this)
                         _la = _input.LA(1)
-                        if (_la and 0x3f.inv() == 0 && 1L shl _la and 1025294666301552L != 0L) {
+                        if (_la and 0x3f.inv() == 0 && 1L shl _la and 8524513799045232L != 0L) {
                             run {
-                                state = 131
+                                state = 133
                                 _localctx.args = exprList()
                             }
                         }
-                        state = 134
+                        state = 136
                         match(PC)
                     }
                 }
@@ -1072,7 +1105,7 @@ class MMParser(input: TokenStream?) : Parser(input) {
         ParserRuleContext(parent, invokingState) {
         var expr: ExprContext? = null
         var exprs: MutableList<ExprContext?> = ArrayList()
-        fun expr(): List<ExprContext> {
+        fun expr(): MutableList<ExprContext?> {
             return getRuleContexts(ExprContext::class.java)
         }
 
@@ -1107,23 +1140,23 @@ class MMParser(input: TokenStream?) : Parser(input) {
         try {
             enterOuterAlt(_localctx, 1)
             run {
-                state = 137
+                state = 139
                 _localctx.expr = expr(0)
                 _localctx.exprs.add(_localctx.expr)
-                state = 142
+                state = 144
                 _errHandler.sync(this)
                 _la = _input.LA(1)
                 while (_la == COMMA) {
                     run {
                         run {
-                            state = 138
+                            state = 140
                             match(COMMA)
-                            state = 139
+                            state = 141
                             _localctx.expr = expr(0)
                             _localctx.exprs.add(_localctx.expr)
                         }
                     }
-                    state = 144
+                    state = 146
                     _errHandler.sync(this)
                     _la = _input.LA(1)
                 }
@@ -1209,7 +1242,7 @@ class MMParser(input: TokenStream?) : Parser(input) {
             return getRuleContext(ExprContext::class.java, 0)
         }
 
-        fun stmt(): List<StmtContext> {
+        fun stmt(): MutableList<StmtContext?> {
             return getRuleContexts(StmtContext::class.java)
         }
 
@@ -1256,7 +1289,7 @@ class MMParser(input: TokenStream?) : Parser(input) {
             return getRuleContext(ExprContext::class.java, 0)
         }
 
-        fun stmt(): List<StmtContext> {
+        fun stmt(): MutableList<StmtContext?> {
             return getRuleContexts(StmtContext::class.java)
         }
 
@@ -1303,7 +1336,7 @@ class MMParser(input: TokenStream?) : Parser(input) {
             return getRuleContext(ExprContext::class.java, 0)
         }
 
-        fun stmt(): List<StmtContext> {
+        fun stmt(): MutableList<StmtContext?> {
             return getRuleContexts(StmtContext::class.java)
         }
 
@@ -1363,7 +1396,7 @@ class MMParser(input: TokenStream?) : Parser(input) {
             return getRuleContext(ExprContext::class.java, 0)
         }
 
-        fun stmt(): List<StmtContext> {
+        fun stmt(): MutableList<StmtContext?> {
             return getRuleContexts(StmtContext::class.java)
         }
 
@@ -1531,16 +1564,16 @@ class MMParser(input: TokenStream?) : Parser(input) {
         enterRule(_localctx, 22, RULE_stmt)
         var _la: Int
         try {
-            state = 235
+            state = 237
             _errHandler.sync(this)
             when (interpreter.adaptivePredict(_input, 21, _ctx)) {
                 1 -> {
                     _localctx = ExprStmtContext(_localctx)
                     enterOuterAlt(_localctx, 1)
                     run {
-                        state = 145
+                        state = 147
                         expr(0)
-                        state = 146
+                        state = 148
                         match(SEMI)
                     }
                 }
@@ -1549,15 +1582,15 @@ class MMParser(input: TokenStream?) : Parser(input) {
                     _localctx = VarDeclContext(_localctx)
                     enterOuterAlt(_localctx, 2)
                     run {
-                        state = 148
-                        match(VAR)
-                        state = 149
-                        (_localctx as VarDeclContext).name = match(ID)
                         state = 150
-                        match(EQ)
+                        match(VAR)
                         state = 151
-                        (_localctx as VarDeclContext).value = expr(0)
+                        (_localctx as VarDeclContext).name = match(ID)
                         state = 152
+                        match(EQ)
+                        state = 153
+                        (_localctx as VarDeclContext).value = expr(0)
+                        state = 154
                         match(SEMI)
                     }
                 }
@@ -1566,15 +1599,15 @@ class MMParser(input: TokenStream?) : Parser(input) {
                     _localctx = ConstDeclContext(_localctx)
                     enterOuterAlt(_localctx, 3)
                     run {
-                        state = 154
-                        match(CONST)
-                        state = 155
-                        (_localctx as ConstDeclContext).name = match(ID)
                         state = 156
-                        match(EQ)
+                        match(CONST)
                         state = 157
-                        (_localctx as ConstDeclContext).value = expr(0)
+                        (_localctx as ConstDeclContext).name = match(ID)
                         state = 158
+                        match(EQ)
+                        state = 159
+                        (_localctx as ConstDeclContext).value = expr(0)
+                        state = 160
                         match(SEMI)
                     }
                 }
@@ -1583,13 +1616,13 @@ class MMParser(input: TokenStream?) : Parser(input) {
                     _localctx = AssignStmtContext(_localctx)
                     enterOuterAlt(_localctx, 4)
                     run {
-                        state = 160
-                        (_localctx as AssignStmtContext).name = match(ID)
-                        state = 161
-                        match(EQ)
                         state = 162
-                        (_localctx as AssignStmtContext).value = expr(0)
+                        (_localctx as AssignStmtContext).name = match(ID)
                         state = 163
+                        match(EQ)
+                        state = 164
+                        (_localctx as AssignStmtContext).value = expr(0)
+                        state = 165
                         match(SEMI)
                     }
                 }
@@ -1598,32 +1631,32 @@ class MMParser(input: TokenStream?) : Parser(input) {
                     _localctx = IfStmtContext(_localctx)
                     enterOuterAlt(_localctx, 5)
                     run {
-                        state = 165
-                        match(IF)
-                        state = 166
-                        match(PO)
                         state = 167
-                        (_localctx as IfStmtContext).cond = expr(0)
+                        match(IF)
                         state = 168
-                        match(PC)
+                        match(PO)
                         state = 169
+                        (_localctx as IfStmtContext).cond = expr(0)
+                        state = 170
+                        match(PC)
+                        state = 171
                         match(BO)
-                        state = 173
+                        state = 175
                         _errHandler.sync(this)
                         _la = _input.LA(1)
-                        while (_la and 0x3f.inv() == 0 && 1L shl _la and 1055170458812528L != 0L) {
+                        while (_la and 0x3f.inv() == 0 && 1L shl _la and 8584265384067184L != 0L) {
                             run {
                                 run {
-                                    state = 170
+                                    state = 172
                                     (_localctx as IfStmtContext).stmt = stmt()
                                     (_localctx as IfStmtContext).body.add((_localctx as IfStmtContext).stmt)
                                 }
                             }
-                            state = 175
+                            state = 177
                             _errHandler.sync(this)
                             _la = _input.LA(1)
                         }
-                        state = 176
+                        state = 178
                         match(BC)
                     }
                 }
@@ -1632,53 +1665,53 @@ class MMParser(input: TokenStream?) : Parser(input) {
                     _localctx = IfElseStmtContext(_localctx)
                     enterOuterAlt(_localctx, 6)
                     run {
-                        state = 178
-                        match(IF)
-                        state = 179
-                        match(PO)
                         state = 180
-                        (_localctx as IfElseStmtContext).cond = expr(0)
+                        match(IF)
                         state = 181
-                        match(PC)
+                        match(PO)
                         state = 182
+                        (_localctx as IfElseStmtContext).cond = expr(0)
+                        state = 183
+                        match(PC)
+                        state = 184
                         match(BO)
-                        state = 186
+                        state = 188
                         _errHandler.sync(this)
                         _la = _input.LA(1)
-                        while (_la and 0x3f.inv() == 0 && 1L shl _la and 1055170458812528L != 0L) {
+                        while (_la and 0x3f.inv() == 0 && 1L shl _la and 8584265384067184L != 0L) {
                             run {
                                 run {
-                                    state = 183
+                                    state = 185
                                     (_localctx as IfElseStmtContext).stmt = stmt()
                                     (_localctx as IfElseStmtContext).bTrue.add((_localctx as IfElseStmtContext).stmt)
                                 }
                             }
-                            state = 188
+                            state = 190
                             _errHandler.sync(this)
                             _la = _input.LA(1)
                         }
-                        state = 189
-                        match(BC)
-                        state = 190
-                        match(ELSE)
                         state = 191
+                        match(BC)
+                        state = 192
+                        match(ELSE)
+                        state = 193
                         match(BO)
-                        state = 195
+                        state = 197
                         _errHandler.sync(this)
                         _la = _input.LA(1)
-                        while (_la and 0x3f.inv() == 0 && 1L shl _la and 1055170458812528L != 0L) {
+                        while (_la and 0x3f.inv() == 0 && 1L shl _la and 8584265384067184L != 0L) {
                             run {
                                 run {
-                                    state = 192
+                                    state = 194
                                     (_localctx as IfElseStmtContext).stmt = stmt()
                                     (_localctx as IfElseStmtContext).bFalse.add((_localctx as IfElseStmtContext).stmt)
                                 }
                             }
-                            state = 197
+                            state = 199
                             _errHandler.sync(this)
                             _la = _input.LA(1)
                         }
-                        state = 198
+                        state = 200
                         match(BC)
                     }
                 }
@@ -1687,32 +1720,32 @@ class MMParser(input: TokenStream?) : Parser(input) {
                     _localctx = WhileStmtContext(_localctx)
                     enterOuterAlt(_localctx, 7)
                     run {
-                        state = 200
-                        match(WHILE)
-                        state = 201
-                        match(PO)
                         state = 202
-                        (_localctx as WhileStmtContext).cond = expr(0)
+                        match(WHILE)
                         state = 203
-                        match(PC)
+                        match(PO)
                         state = 204
+                        (_localctx as WhileStmtContext).cond = expr(0)
+                        state = 205
+                        match(PC)
+                        state = 206
                         match(BO)
-                        state = 208
+                        state = 210
                         _errHandler.sync(this)
                         _la = _input.LA(1)
-                        while (_la and 0x3f.inv() == 0 && 1L shl _la and 1055170458812528L != 0L) {
+                        while (_la and 0x3f.inv() == 0 && 1L shl _la and 8584265384067184L != 0L) {
                             run {
                                 run {
-                                    state = 205
+                                    state = 207
                                     (_localctx as WhileStmtContext).stmt = stmt()
                                     (_localctx as WhileStmtContext).body.add((_localctx as WhileStmtContext).stmt)
                                 }
                             }
-                            state = 210
+                            state = 212
                             _errHandler.sync(this)
                             _la = _input.LA(1)
                         }
-                        state = 211
+                        state = 213
                         match(BC)
                     }
                 }
@@ -1721,36 +1754,36 @@ class MMParser(input: TokenStream?) : Parser(input) {
                     _localctx = ForStmtContext(_localctx)
                     enterOuterAlt(_localctx, 8)
                     run {
-                        state = 213
-                        match(FOR)
-                        state = 214
-                        match(PO)
                         state = 215
-                        (_localctx as ForStmtContext).v = match(ID)
+                        match(FOR)
                         state = 216
-                        match(COLON)
+                        match(PO)
                         state = 217
-                        (_localctx as ForStmtContext).set = expr(0)
+                        (_localctx as ForStmtContext).v = match(ID)
                         state = 218
-                        match(PC)
+                        match(COLON)
                         state = 219
+                        (_localctx as ForStmtContext).set = expr(0)
+                        state = 220
+                        match(PC)
+                        state = 221
                         match(BO)
-                        state = 223
+                        state = 225
                         _errHandler.sync(this)
                         _la = _input.LA(1)
-                        while (_la and 0x3f.inv() == 0 && 1L shl _la and 1055170458812528L != 0L) {
+                        while (_la and 0x3f.inv() == 0 && 1L shl _la and 8584265384067184L != 0L) {
                             run {
                                 run {
-                                    state = 220
+                                    state = 222
                                     (_localctx as ForStmtContext).stmt = stmt()
                                     (_localctx as ForStmtContext).body.add((_localctx as ForStmtContext).stmt)
                                 }
                             }
-                            state = 225
+                            state = 227
                             _errHandler.sync(this)
                             _la = _input.LA(1)
                         }
-                        state = 226
+                        state = 228
                         match(BC)
                     }
                 }
@@ -1759,9 +1792,9 @@ class MMParser(input: TokenStream?) : Parser(input) {
                     _localctx = BreakStmtContext(_localctx)
                     enterOuterAlt(_localctx, 9)
                     run {
-                        state = 228
+                        state = 230
                         match(BREAK)
-                        state = 229
+                        state = 231
                         match(SEMI)
                     }
                 }
@@ -1770,18 +1803,18 @@ class MMParser(input: TokenStream?) : Parser(input) {
                     _localctx = ReturnStmtContext(_localctx)
                     enterOuterAlt(_localctx, 10)
                     run {
-                        state = 230
-                        match(RETURN)
                         state = 232
+                        match(RETURN)
+                        state = 234
                         _errHandler.sync(this)
                         _la = _input.LA(1)
-                        if (_la and 0x3f.inv() == 0 && 1L shl _la and 1025294666301552L != 0L) {
+                        if (_la and 0x3f.inv() == 0 && 1L shl _la and 8524513799045232L != 0L) {
                             run {
-                                state = 231
+                                state = 233
                                 _localctx.e = expr(0)
                             }
                         }
-                        state = 234
+                        state = 236
                         match(SEMI)
                     }
                 }
@@ -1844,6 +1877,27 @@ class MMParser(input: TokenStream?) : Parser(input) {
 
         override fun <T> accept(visitor: ParseTreeVisitor<out T>): T {
             return if (visitor is MMVisitor<*>) (visitor as MMVisitor<out T>).visitMemberCallExpr(
+                this
+            ) else visitor.visitChildren(this)
+        }
+    }
+
+    class CurrencyExprContext(ctx: ExprContext?) : ExprContext() {
+        var count: ExprContext? = null
+        fun CURRENCY(): TerminalNode {
+            return getToken(CURRENCY, 0)
+        }
+
+        fun expr(): ExprContext {
+            return getRuleContext(ExprContext::class.java, 0)
+        }
+
+        init {
+            copyFrom(ctx)
+        }
+
+        override fun <T> accept(visitor: ParseTreeVisitor<out T>): T {
+            return if (visitor is MMVisitor<*>) (visitor as MMVisitor<out T>).visitCurrencyExpr(
                 this
             ) else visitor.visitChildren(this)
         }
@@ -1920,7 +1974,7 @@ class MMParser(input: TokenStream?) : Parser(input) {
         var left: ExprContext? = null
         var op: Token? = null
         var right: ExprContext? = null
-        fun expr(): List<ExprContext> {
+        fun expr(): MutableList<ExprContext?> {
             return getRuleContexts(ExprContext::class.java)
         }
 
@@ -1950,7 +2004,7 @@ class MMParser(input: TokenStream?) : Parser(input) {
             return getToken(BRC, 0)
         }
 
-        fun expr(): List<ExprContext> {
+        fun expr(): MutableList<ExprContext?> {
             return getRuleContexts(ExprContext::class.java)
         }
 
@@ -1999,7 +2053,7 @@ class MMParser(input: TokenStream?) : Parser(input) {
             return getToken(COLON, 0)
         }
 
-        fun expr(): List<ExprContext> {
+        fun expr(): MutableList<ExprContext?> {
             return getRuleContexts(ExprContext::class.java)
         }
 
@@ -2021,7 +2075,7 @@ class MMParser(input: TokenStream?) : Parser(input) {
     class RangeInclusiveExprContext(ctx: ExprContext?) : ExprContext() {
         var begin: ExprContext? = null
         var end: ExprContext? = null
-        fun expr(): List<ExprContext> {
+        fun expr(): MutableList<ExprContext?> {
             return getRuleContexts(ExprContext::class.java)
         }
 
@@ -2044,7 +2098,7 @@ class MMParser(input: TokenStream?) : Parser(input) {
         var left: ExprContext? = null
         var op: Token? = null
         var right: ExprContext? = null
-        fun expr(): List<ExprContext> {
+        fun expr(): MutableList<ExprContext?> {
             return getRuleContexts(ExprContext::class.java)
         }
 
@@ -2083,7 +2137,7 @@ class MMParser(input: TokenStream?) : Parser(input) {
         var left: ExprContext? = null
         var op: Token? = null
         var right: ExprContext? = null
-        fun expr(): List<ExprContext> {
+        fun expr(): MutableList<ExprContext?> {
             return getRuleContexts(ExprContext::class.java)
         }
 
@@ -2097,6 +2151,27 @@ class MMParser(input: TokenStream?) : Parser(input) {
 
         override fun <T> accept(visitor: ParseTreeVisitor<out T>): T {
             return if (visitor is MMVisitor<*>) (visitor as MMVisitor<out T>).visitMulExpr(
+                this
+            ) else visitor.visitChildren(this)
+        }
+    }
+
+    class DiceExprContext(ctx: ExprContext?) : ExprContext() {
+        var count: ExprContext? = null
+        fun DICE(): TerminalNode {
+            return getToken(DICE, 0)
+        }
+
+        fun expr(): ExprContext {
+            return getRuleContext(ExprContext::class.java, 0)
+        }
+
+        init {
+            copyFrom(ctx)
+        }
+
+        override fun <T> accept(visitor: ParseTreeVisitor<out T>): T {
+            return if (visitor is MMVisitor<*>) (visitor as MMVisitor<out T>).visitDiceExpr(
                 this
             ) else visitor.visitChildren(this)
         }
@@ -2135,7 +2210,7 @@ class MMParser(input: TokenStream?) : Parser(input) {
         var left: ExprContext? = null
         var op: Token? = null
         var right: ExprContext? = null
-        fun expr(): List<ExprContext> {
+        fun expr(): MutableList<ExprContext?> {
             return getRuleContexts(ExprContext::class.java)
         }
 
@@ -2182,7 +2257,7 @@ class MMParser(input: TokenStream?) : Parser(input) {
     class RangeExprContext(ctx: ExprContext?) : ExprContext() {
         var begin: ExprContext? = null
         var end: ExprContext? = null
-        fun expr(): List<ExprContext> {
+        fun expr(): MutableList<ExprContext?> {
             return getRuleContexts(ExprContext::class.java)
         }
 
@@ -2219,14 +2294,14 @@ class MMParser(input: TokenStream?) : Parser(input) {
             var _alt: Int
             enterOuterAlt(_localctx, 1)
             run {
-                state = 257
+                state = 259
                 _errHandler.sync(this)
                 when (interpreter.adaptivePredict(_input, 24, _ctx)) {
                     1 -> {
                         _localctx = LiteralExprContext(_localctx)
                         _ctx = _localctx
                         _prevctx = _localctx
-                        state = 238
+                        state = 240
                         literal()
                     }
 
@@ -2234,7 +2309,7 @@ class MMParser(input: TokenStream?) : Parser(input) {
                         _localctx = NameExprContext(_localctx)
                         _ctx = _localctx
                         _prevctx = _localctx
-                        state = 239
+                        state = 241
                         match(ID)
                     }
 
@@ -2242,18 +2317,18 @@ class MMParser(input: TokenStream?) : Parser(input) {
                         _localctx = ListExprContext(_localctx)
                         _ctx = _localctx
                         _prevctx = _localctx
-                        state = 240
-                        match(BRO)
                         state = 242
+                        match(BRO)
+                        state = 244
                         _errHandler.sync(this)
                         _la = _input.LA(1)
-                        if (_la and 0x3f.inv() == 0 && 1L shl _la and 1025294666301552L != 0L) {
+                        if (_la and 0x3f.inv() == 0 && 1L shl _la and 8524513799045232L != 0L) {
                             run {
-                                state = 241
+                                state = 243
                                 (_localctx as ListExprContext).exprs = exprList()
                             }
                         }
-                        state = 244
+                        state = 246
                         match(BRC)
                     }
 
@@ -2261,20 +2336,20 @@ class MMParser(input: TokenStream?) : Parser(input) {
                         _localctx = CallExprContext(_localctx)
                         _ctx = _localctx
                         _prevctx = _localctx
-                        state = 245
+                        state = 247
                         match(ID)
-                        state = 246
-                        match(PO)
                         state = 248
+                        match(PO)
+                        state = 250
                         _errHandler.sync(this)
                         _la = _input.LA(1)
-                        if (_la and 0x3f.inv() == 0 && 1L shl _la and 1025294666301552L != 0L) {
+                        if (_la and 0x3f.inv() == 0 && 1L shl _la and 8524513799045232L != 0L) {
                             run {
-                                state = 247
+                                state = 249
                                 (_localctx as CallExprContext).args = exprList()
                             }
                         }
-                        state = 250
+                        state = 252
                         match(PC)
                     }
 
@@ -2282,11 +2357,11 @@ class MMParser(input: TokenStream?) : Parser(input) {
                         _localctx = ParenExprContext(_localctx)
                         _ctx = _localctx
                         _prevctx = _localctx
-                        state = 251
-                        match(PO)
-                        state = 252
-                        (_localctx as ParenExprContext).e = expr(0)
                         state = 253
+                        match(PO)
+                        state = 254
+                        (_localctx as ParenExprContext).e = expr(0)
+                        state = 255
                         match(PC)
                     }
 
@@ -2294,7 +2369,7 @@ class MMParser(input: TokenStream?) : Parser(input) {
                         _localctx = UnaryExprContext(_localctx)
                         _ctx = _localctx
                         _prevctx = _localctx
-                        state = 255
+                        state = 257
                         (_localctx as UnaryExprContext).op = _input.LT(1)
                         _la = _input.LA(1)
                         if (!(_la and 0x3f.inv() == 0 && 1L shl _la and 112L != 0L)) {
@@ -2305,12 +2380,12 @@ class MMParser(input: TokenStream?) : Parser(input) {
                             _errHandler.reportMatch(this)
                             consume()
                         }
-                        state = 256
+                        state = 258
                         (_localctx as UnaryExprContext).right = expr(8)
                     }
                 }
                 _ctx.stop = _input.LT(-1)
-                state = 306
+                state = 312
                 _errHandler.sync(this)
                 _alt = interpreter.adaptivePredict(_input, 28, _ctx)
                 while (_alt != 2 && _alt != ATN.INVALID_ALT_NUMBER) {
@@ -2318,7 +2393,7 @@ class MMParser(input: TokenStream?) : Parser(input) {
                         if (_parseListeners != null) triggerExitRuleEvent()
                         _prevctx = _localctx
                         run {
-                            state = 304
+                            state = 310
                             _errHandler.sync(this)
                             when (interpreter.adaptivePredict(_input, 27, _ctx)) {
                                 1 -> {
@@ -2326,12 +2401,12 @@ class MMParser(input: TokenStream?) : Parser(input) {
                                         MulExprContext(ExprContext(_parentctx, _parentState))
                                     (_localctx as MulExprContext).left = _prevctx
                                     pushNewRecursionContext(_localctx, _startState, RULE_expr)
-                                    state = 259
+                                    state = 261
                                     if (!precpred(_ctx, 7)) throw FailedPredicateException(
                                         this,
                                         "precpred(_ctx, 7)"
                                     )
-                                    state = 260
+                                    state = 262
                                     (_localctx as MulExprContext).op = _input.LT(1)
                                     _la = _input.LA(1)
                                     if (!(_la and 0x3f.inv() == 0 && 1L shl _la and 896L != 0L)) {
@@ -2342,7 +2417,7 @@ class MMParser(input: TokenStream?) : Parser(input) {
                                         _errHandler.reportMatch(this)
                                         consume()
                                     }
-                                    state = 261
+                                    state = 263
                                     (_localctx as MulExprContext).right = expr(8)
                                 }
 
@@ -2351,12 +2426,12 @@ class MMParser(input: TokenStream?) : Parser(input) {
                                         AddExprContext(ExprContext(_parentctx, _parentState))
                                     (_localctx as AddExprContext).left = _prevctx
                                     pushNewRecursionContext(_localctx, _startState, RULE_expr)
-                                    state = 262
+                                    state = 264
                                     if (!precpred(_ctx, 6)) throw FailedPredicateException(
                                         this,
                                         "precpred(_ctx, 6)"
                                     )
-                                    state = 263
+                                    state = 265
                                     (_localctx as AddExprContext).op = _input.LT(1)
                                     _la = _input.LA(1)
                                     if (!(_la == T__3 || _la == T__4)) {
@@ -2367,7 +2442,7 @@ class MMParser(input: TokenStream?) : Parser(input) {
                                         _errHandler.reportMatch(this)
                                         consume()
                                     }
-                                    state = 264
+                                    state = 266
                                     (_localctx as AddExprContext).right = expr(7)
                                 }
 
@@ -2376,12 +2451,12 @@ class MMParser(input: TokenStream?) : Parser(input) {
                                         CmpExprContext(ExprContext(_parentctx, _parentState))
                                     (_localctx as CmpExprContext).left = _prevctx
                                     pushNewRecursionContext(_localctx, _startState, RULE_expr)
-                                    state = 265
+                                    state = 267
                                     if (!precpred(_ctx, 5)) throw FailedPredicateException(
                                         this,
                                         "precpred(_ctx, 5)"
                                     )
-                                    state = 266
+                                    state = 268
                                     (_localctx as CmpExprContext).op = _input.LT(1)
                                     _la = _input.LA(1)
                                     if (!(_la and 0x3f.inv() == 0 && 1L shl _la and 64512L != 0L)) {
@@ -2392,7 +2467,7 @@ class MMParser(input: TokenStream?) : Parser(input) {
                                         _errHandler.reportMatch(this)
                                         consume()
                                     }
-                                    state = 267
+                                    state = 269
                                     (_localctx as CmpExprContext).right = expr(6)
                                 }
 
@@ -2401,12 +2476,12 @@ class MMParser(input: TokenStream?) : Parser(input) {
                                         BoolExprContext(ExprContext(_parentctx, _parentState))
                                     (_localctx as BoolExprContext).left = _prevctx
                                     pushNewRecursionContext(_localctx, _startState, RULE_expr)
-                                    state = 268
+                                    state = 270
                                     if (!precpred(_ctx, 4)) throw FailedPredicateException(
                                         this,
                                         "precpred(_ctx, 4)"
                                     )
-                                    state = 269
+                                    state = 271
                                     (_localctx as BoolExprContext).op = _input.LT(1)
                                     _la = _input.LA(1)
                                     if (!(_la == T__15 || _la == T__16)) {
@@ -2417,7 +2492,7 @@ class MMParser(input: TokenStream?) : Parser(input) {
                                         _errHandler.reportMatch(this)
                                         consume()
                                     }
-                                    state = 270
+                                    state = 272
                                     (_localctx as BoolExprContext).right = expr(5)
                                 }
 
@@ -2426,103 +2501,131 @@ class MMParser(input: TokenStream?) : Parser(input) {
                                         TernaryExprContext(ExprContext(_parentctx, _parentState))
                                     (_localctx as TernaryExprContext).cond = _prevctx
                                     pushNewRecursionContext(_localctx, _startState, RULE_expr)
-                                    state = 271
+                                    state = 273
                                     if (!precpred(_ctx, 3)) throw FailedPredicateException(
                                         this,
                                         "precpred(_ctx, 3)"
                                     )
-                                    state = 272
-                                    match(QMARK)
-                                    state = 273
-                                    (_localctx as TernaryExprContext).bTrue = expr(0)
                                     state = 274
-                                    match(COLON)
+                                    match(QMARK)
                                     state = 275
+                                    (_localctx as TernaryExprContext).bTrue = expr(0)
+                                    state = 276
+                                    match(COLON)
+                                    state = 277
                                     (_localctx as TernaryExprContext).bFalse = expr(4)
                                 }
 
                                 6 -> {
                                     _localctx =
-                                        IndexExprContext(ExprContext(_parentctx, _parentState))
-                                    (_localctx as IndexExprContext).base = _prevctx
+                                        DiceExprContext(ExprContext(_parentctx, _parentState))
+                                    (_localctx as DiceExprContext).count = _prevctx
                                     pushNewRecursionContext(_localctx, _startState, RULE_expr)
-                                    state = 277
-                                    if (!precpred(_ctx, 11)) throw FailedPredicateException(
-                                        this,
-                                        "precpred(_ctx, 11)"
-                                    )
-                                    state = 278
-                                    match(BRO)
                                     state = 279
-                                    (_localctx as IndexExprContext).index = expr(0)
+                                    if (!precpred(_ctx, 13)) throw FailedPredicateException(
+                                        this,
+                                        "precpred(_ctx, 13)"
+                                    )
                                     state = 280
-                                    match(BRC)
+                                    match(DICE)
                                 }
 
                                 7 -> {
                                     _localctx =
-                                        MemberExprContext(ExprContext(_parentctx, _parentState))
-                                    (_localctx as MemberExprContext).base = _prevctx
+                                        CurrencyExprContext(ExprContext(_parentctx, _parentState))
+                                    (_localctx as CurrencyExprContext).count = _prevctx
                                     pushNewRecursionContext(_localctx, _startState, RULE_expr)
-                                    state = 282
-                                    if (!precpred(_ctx, 10)) throw FailedPredicateException(
+                                    state = 281
+                                    if (!precpred(_ctx, 12)) throw FailedPredicateException(
                                         this,
-                                        "precpred(_ctx, 10)"
+                                        "precpred(_ctx, 12)"
                                     )
-                                    state = 283
-                                    match(DOT)
-                                    state = 284
-                                    (_localctx as MemberExprContext).name = match(ID)
+                                    state = 282
+                                    match(CURRENCY)
                                 }
 
                                 8 -> {
                                     _localctx =
-                                        MemberCallExprContext(ExprContext(_parentctx, _parentState))
-                                    (_localctx as MemberCallExprContext).base = _prevctx
+                                        IndexExprContext(ExprContext(_parentctx, _parentState))
+                                    (_localctx as IndexExprContext).base = _prevctx
                                     pushNewRecursionContext(_localctx, _startState, RULE_expr)
-                                    state = 285
-                                    if (!precpred(_ctx, 9)) throw FailedPredicateException(
+                                    state = 283
+                                    if (!precpred(_ctx, 11)) throw FailedPredicateException(
                                         this,
-                                        "precpred(_ctx, 9)"
+                                        "precpred(_ctx, 11)"
                                     )
+                                    state = 284
+                                    match(BRO)
+                                    state = 285
+                                    (_localctx as IndexExprContext).index = expr(0)
                                     state = 286
-                                    match(DOT)
-                                    state = 287
-                                    (_localctx as MemberCallExprContext).name = match(ID)
-                                    state = 288
-                                    match(PO)
-                                    state = 290
-                                    _errHandler.sync(this)
-                                    _la = _input.LA(1)
-                                    if (_la and 0x3f.inv() == 0 && 1L shl _la and 1025294666301552L != 0L) {
-                                        run {
-                                            state = 289
-                                            (_localctx as MemberCallExprContext).args = exprList()
-                                        }
-                                    }
-                                    state = 292
-                                    match(PC)
+                                    match(BRC)
                                 }
 
                                 9 -> {
                                     _localctx =
+                                        MemberExprContext(ExprContext(_parentctx, _parentState))
+                                    (_localctx as MemberExprContext).base = _prevctx
+                                    pushNewRecursionContext(_localctx, _startState, RULE_expr)
+                                    state = 288
+                                    if (!precpred(_ctx, 10)) throw FailedPredicateException(
+                                        this,
+                                        "precpred(_ctx, 10)"
+                                    )
+                                    state = 289
+                                    match(DOT)
+                                    state = 290
+                                    (_localctx as MemberExprContext).name = match(ID)
+                                }
+
+                                10 -> {
+                                    _localctx =
+                                        MemberCallExprContext(ExprContext(_parentctx, _parentState))
+                                    (_localctx as MemberCallExprContext).base = _prevctx
+                                    pushNewRecursionContext(_localctx, _startState, RULE_expr)
+                                    state = 291
+                                    if (!precpred(_ctx, 9)) throw FailedPredicateException(
+                                        this,
+                                        "precpred(_ctx, 9)"
+                                    )
+                                    state = 292
+                                    match(DOT)
+                                    state = 293
+                                    (_localctx as MemberCallExprContext).name = match(ID)
+                                    state = 294
+                                    match(PO)
+                                    state = 296
+                                    _errHandler.sync(this)
+                                    _la = _input.LA(1)
+                                    if (_la and 0x3f.inv() == 0 && 1L shl _la and 8524513799045232L != 0L) {
+                                        run {
+                                            state = 295
+                                            (_localctx as MemberCallExprContext).args = exprList()
+                                        }
+                                    }
+                                    state = 298
+                                    match(PC)
+                                }
+
+                                11 -> {
+                                    _localctx =
                                         RangeExprContext(ExprContext(_parentctx, _parentState))
                                     (_localctx as RangeExprContext).begin = _prevctx
                                     pushNewRecursionContext(_localctx, _startState, RULE_expr)
-                                    state = 293
+                                    state = 299
                                     if (!precpred(_ctx, 2)) throw FailedPredicateException(
                                         this,
                                         "precpred(_ctx, 2)"
                                     )
-                                    state = 294
+                                    state = 300
                                     match(T__17)
-                                    state = 295
+                                    state = 301
                                     (_localctx as RangeExprContext).end = expr(0)
-                                    state = 297
+                                    state = 303
                                     _errHandler.sync(this)
                                     when (interpreter.adaptivePredict(_input, 26, _ctx)) {
                                         1 -> {
-                                            state = 296
+                                            state = 302
                                             match(T__18)
                                         }
 
@@ -2530,7 +2633,7 @@ class MMParser(input: TokenStream?) : Parser(input) {
                                     }
                                 }
 
-                                10 -> {
+                                12 -> {
                                     _localctx = RangeInclusiveExprContext(
                                         ExprContext(
                                             _parentctx,
@@ -2539,16 +2642,16 @@ class MMParser(input: TokenStream?) : Parser(input) {
                                     )
                                     (_localctx as RangeInclusiveExprContext).begin = _prevctx
                                     pushNewRecursionContext(_localctx, _startState, RULE_expr)
-                                    state = 299
+                                    state = 305
                                     if (!precpred(_ctx, 1)) throw FailedPredicateException(
                                         this,
                                         "precpred(_ctx, 1)"
                                     )
-                                    state = 300
+                                    state = 306
                                     match(T__17)
-                                    state = 301
+                                    state = 307
                                     (_localctx as RangeInclusiveExprContext).end = expr(0)
-                                    state = 302
+                                    state = 308
                                     match(T__19)
                                 }
 
@@ -2556,7 +2659,7 @@ class MMParser(input: TokenStream?) : Parser(input) {
                             }
                         }
                     }
-                    state = 308
+                    state = 314
                     _errHandler.sync(this)
                     _alt = interpreter.adaptivePredict(_input, 28, _ctx)
                 }
@@ -2585,21 +2688,13 @@ class MMParser(input: TokenStream?) : Parser(input) {
         }
     }
 
-    class CountDiceLiteralContext(ctx: LiteralContext?) : LiteralContext() {
-        fun INT(): TerminalNode {
-            return getToken(INT, 0)
-        }
-
-        fun DICE(): TerminalNode {
-            return getToken(DICE, 0)
-        }
-
+    class InfFloatLiteralContext(ctx: LiteralContext?) : LiteralContext() {
         init {
             copyFrom(ctx)
         }
 
         override fun <T> accept(visitor: ParseTreeVisitor<out T>): T {
-            return if (visitor is MMVisitor<*>) (visitor as MMVisitor<out T>).visitCountDiceLiteral(
+            return if (visitor is MMVisitor<*>) (visitor as MMVisitor<out T>).visitInfFloatLiteral(
                 this
             ) else visitor.visitChildren(this)
         }
@@ -2638,7 +2733,9 @@ class MMParser(input: TokenStream?) : Parser(input) {
     }
 
     class StringLiteralContext(ctx: LiteralContext?) : LiteralContext() {
-        var content: Token? = null
+        fun STRING(): TerminalNode {
+            return getToken(STRING, 0)
+        }
 
         init {
             copyFrom(ctx)
@@ -2699,104 +2796,99 @@ class MMParser(input: TokenStream?) : Parser(input) {
         }
     }
 
+    class InfIntLiteralContext(ctx: LiteralContext?) : LiteralContext() {
+        init {
+            copyFrom(ctx)
+        }
+
+        override fun <T> accept(visitor: ParseTreeVisitor<out T>): T {
+            return if (visitor is MMVisitor<*>) (visitor as MMVisitor<out T>).visitInfIntLiteral(
+                this
+            ) else visitor.visitChildren(this)
+        }
+    }
+
     @Throws(RecognitionException::class)
     fun literal(): LiteralContext {
         var _localctx = LiteralContext(_ctx, state)
         enterRule(_localctx, 26, RULE_literal)
-        var _la: Int
         try {
-            state = 324
+            state = 323
             _errHandler.sync(this)
-            when (interpreter.adaptivePredict(_input, 30, _ctx)) {
-                1 -> {
+            when (_input.LA(1)) {
+                STRING -> {
                     _localctx = StringLiteralContext(_localctx)
                     enterOuterAlt(_localctx, 1)
                     run {
-                        state = 309
-                        match(T__20)
-                        state = 313
-                        _errHandler.sync(this)
-                        _la = _input.LA(1)
-                        while (_la and 0x3f.inv() == 0 && 1L shl _la and 4503599625273342L != 0L) {
-                            run {
-                                run {
-                                    state = 310
-                                    (_localctx as StringLiteralContext).content = _input.LT(1)
-                                    _la = _input.LA(1)
-                                    if (_la <= 0 || _la == T__20) {
-                                        (_localctx as StringLiteralContext).content =
-                                            _errHandler.recoverInline(this) as Token
-                                    } else {
-                                        if (_input.LA(1) == Token.EOF) matchedEOF = true
-                                        _errHandler.reportMatch(this)
-                                        consume()
-                                    }
-                                }
-                            }
-                            state = 315
-                            _errHandler.sync(this)
-                            _la = _input.LA(1)
-                        }
-                        state = 316
-                        match(T__20)
+                        state = 315
+                        match(STRING)
                     }
                 }
 
-                2 -> {
+                INT -> {
                     _localctx = IntLiteralContext(_localctx)
                     enterOuterAlt(_localctx, 2)
                     run {
-                        state = 317
+                        state = 316
                         match(INT)
                     }
                 }
 
-                3 -> {
+                FLOAT -> {
                     _localctx = FloatLiteralContext(_localctx)
                     enterOuterAlt(_localctx, 3)
                     run {
-                        state = 318
+                        state = 317
                         match(FLOAT)
                     }
                 }
 
-                4 -> {
+                DICE -> {
                     _localctx = DiceLiteralContext(_localctx)
                     enterOuterAlt(_localctx, 4)
                     run {
-                        state = 319
+                        state = 318
                         match(DICE)
                     }
                 }
 
-                5 -> {
-                    _localctx = CountDiceLiteralContext(_localctx)
+                TRUE -> {
+                    _localctx = TrueLiteralContext(_localctx)
                     enterOuterAlt(_localctx, 5)
                     run {
-                        state = 320
-                        match(INT)
-                        state = 321
-                        match(DICE)
-                    }
-                }
-
-                6 -> {
-                    _localctx = TrueLiteralContext(_localctx)
-                    enterOuterAlt(_localctx, 6)
-                    run {
-                        state = 322
+                        state = 319
                         match(TRUE)
                     }
                 }
 
-                7 -> {
+                FALSE -> {
                     _localctx = FalseLiteralContext(_localctx)
-                    enterOuterAlt(_localctx, 7)
+                    enterOuterAlt(_localctx, 6)
                     run {
-                        state = 323
+                        state = 320
                         match(FALSE)
                     }
                 }
+
+                T__20 -> {
+                    _localctx = InfIntLiteralContext(_localctx)
+                    enterOuterAlt(_localctx, 7)
+                    run {
+                        state = 321
+                        match(T__20)
+                    }
+                }
+
+                T__21 -> {
+                    _localctx = InfFloatLiteralContext(_localctx)
+                    enterOuterAlt(_localctx, 8)
+                    run {
+                        state = 322
+                        match(T__21)
+                    }
+                }
+
+                else -> throw NoViableAltException(this)
             }
         } catch (re: RecognitionException) {
             _localctx.exception = re
@@ -2822,11 +2914,13 @@ class MMParser(input: TokenStream?) : Parser(input) {
             2 -> return precpred(_ctx, 5)
             3 -> return precpred(_ctx, 4)
             4 -> return precpred(_ctx, 3)
-            5 -> return precpred(_ctx, 11)
-            6 -> return precpred(_ctx, 10)
-            7 -> return precpred(_ctx, 9)
-            8 -> return precpred(_ctx, 2)
-            9 -> return precpred(_ctx, 1)
+            5 -> return precpred(_ctx, 13)
+            6 -> return precpred(_ctx, 12)
+            7 -> return precpred(_ctx, 11)
+            8 -> return precpred(_ctx, 10)
+            9 -> return precpred(_ctx, 9)
+            10 -> return precpred(_ctx, 2)
+            11 -> return precpred(_ctx, 1)
         }
         return true
     }
@@ -2863,36 +2957,39 @@ class MMParser(input: TokenStream?) : Parser(input) {
         const val T__18 = 19
         const val T__19 = 20
         const val T__20 = 21
-        const val PO = 22
-        const val PC = 23
-        const val BO = 24
-        const val BC = 25
-        const val BRO = 26
-        const val BRC = 27
-        const val COMMA = 28
-        const val SEMI = 29
-        const val QMARK = 30
-        const val EQ = 31
-        const val DOT = 32
-        const val COLON = 33
-        const val IF = 34
-        const val FOR = 35
-        const val FUN = 36
-        const val VAR = 37
-        const val ELSE = 38
-        const val TRUE = 39
-        const val BREAK = 40
-        const val CONST = 41
-        const val FALSE = 42
-        const val WHILE = 43
-        const val RETURN = 44
-        const val DICE = 45
-        const val TAGNAME = 46
-        const val ID = 47
-        const val INT = 48
-        const val FLOAT = 49
-        const val COMMENT = 50
-        const val WS = 51
+        const val T__21 = 22
+        const val PO = 23
+        const val PC = 24
+        const val BO = 25
+        const val BC = 26
+        const val BRO = 27
+        const val BRC = 28
+        const val COMMA = 29
+        const val SEMI = 30
+        const val QMARK = 31
+        const val EQ = 32
+        const val DOT = 33
+        const val COLON = 34
+        const val IF = 35
+        const val FOR = 36
+        const val FUN = 37
+        const val VAR = 38
+        const val ELSE = 39
+        const val TRUE = 40
+        const val BREAK = 41
+        const val CONST = 42
+        const val FALSE = 43
+        const val WHILE = 44
+        const val RETURN = 45
+        const val DICE = 46
+        const val CURRENCY = 47
+        const val TAGNAME = 48
+        const val ID = 49
+        const val INT = 50
+        const val FLOAT = 51
+        const val STRING = 52
+        const val COMMENT = 53
+        const val WS = 54
         const val RULE_program = 0
         const val RULE_preamble = 1
         const val RULE_dependency = 2
@@ -2920,10 +3017,10 @@ class MMParser(input: TokenStream?) : Parser(input) {
             return arrayOf(
                 null, "'source'", "'import'", "'all'", "'+'", "'-'", "'!'", "'*'", "'/'",
                 "'%'", "'<'", "'>'", "'<='", "'>='", "'=='", "'!='", "'&&'", "'||'",
-                "'to'", "'exclusive'", "'inclusive'", "'\"'", "'('", "')'", "'{'", "'}'",
-                "'['", "']'", "','", "';'", "'?'", "'='", "'.'", "':'", "'if'", "'for'",
-                "'fun'", "'var'", "'else'", "'true'", "'break'", "'const'", "'false'",
-                "'while'", "'return'"
+                "'to'", "'exclusive'", "'inclusive'", "'INF'", "'INFF'", "'('", "')'",
+                "'{'", "'}'", "'['", "']'", "','", "';'", "'?'", "'='", "'.'", "':'",
+                "'if'", "'for'", "'fun'", "'var'", "'else'", "'true'", "'break'", "'const'",
+                "'false'", "'while'", "'return'"
             )
         }
 
@@ -2931,11 +3028,11 @@ class MMParser(input: TokenStream?) : Parser(input) {
         private fun makeSymbolicNames(): Array<String?> {
             return arrayOf(
                 null, null, null, null, null, null, null, null, null, null, null, null,
-                null, null, null, null, null, null, null, null, null, null, "PO", "PC",
-                "BO", "BC", "BRO", "BRC", "COMMA", "SEMI", "QMARK", "EQ", "DOT", "COLON",
-                "IF", "FOR", "FUN", "VAR", "ELSE", "TRUE", "BREAK", "CONST", "FALSE",
-                "WHILE", "RETURN", "DICE", "TAGNAME", "ID", "INT", "FLOAT", "COMMENT",
-                "WS"
+                null, null, null, null, null, null, null, null, null, null, null, "PO",
+                "PC", "BO", "BC", "BRO", "BRC", "COMMA", "SEMI", "QMARK", "EQ", "DOT",
+                "COLON", "IF", "FOR", "FUN", "VAR", "ELSE", "TRUE", "BREAK", "CONST",
+                "FALSE", "WHILE", "RETURN", "DICE", "CURRENCY", "TAGNAME", "ID", "INT",
+                "FLOAT", "STRING", "COMMENT", "WS"
             )
         }
 
@@ -2948,7 +3045,7 @@ class MMParser(input: TokenStream?) : Parser(input) {
         }.toTypedArray()
 
         const val _serializedATN =
-            "\u0004\u00013\u0147\u0002\u0000\u0007\u0000\u0002\u0001\u0007\u0001\u0002" +
+            "\u0004\u00016\u0146\u0002\u0000\u0007\u0000\u0002\u0001\u0007\u0001\u0002" +
                     "\u0002\u0007\u0002\u0002\u0003\u0007\u0003\u0002\u0004\u0007\u0004\u0002" +
                     "\u0005\u0007\u0005\u0002\u0006\u0007\u0006\u0002\u0007\u0007\u0007\u0002" +
                     "\b\u0007\b\u0002\t\u0007\t\u0002\n\u0007\n\u0002\u000b\u0007\u000b\u0002" +
@@ -2961,209 +3058,210 @@ class MMParser(input: TokenStream?) : Parser(input) {
                     "\u0004A\b\u0004\u0001\u0004\u0001\u0004\u0001\u0004\u0003\u0004F\b\u0004" +
                     "\u0001\u0004\u0001\u0004\u0005\u0004J\b\u0004\n\u0004\u000c\u0004M\t\u0004" +
                     "\u0001\u0004\u0001\u0004\u0001\u0004\u0001\u0004\u0001\u0004\u0001\u0004" +
-                    "\u0001\u0004\u0003\u0004V\b\u0004\u0001\u0004\u0001\u0004\u0003\u0004" +
-                    "Z\b\u0004\u0001\u0005\u0001\u0005\u0001\u0005\u0001\u0005\u0001\u0005" +
-                    "\u0001\u0005\u0001\u0005\u0001\u0005\u0003\u0005d\b\u0005\u0001\u0006" +
-                    "\u0001\u0006\u0001\u0006\u0001\u0006\u0003\u0006j\b\u0006\u0001\u0006" +
-                    "\u0001\u0006\u0001\u0006\u0005\u0006o\b\u0006\n\u0006\u000c\u0006r\t\u0006" +
-                    "\u0001\u0006\u0001\u0006\u0001\u0007\u0001\u0007\u0001\u0007\u0001\u0007" +
-                    "\u0001\u0007\u0001\u0007\u0001\b\u0004\b}\b\b\u000b\b\u000c\b~\u0001\t\u0001" +
-                    "\t\u0001\t\u0001\t\u0003\t\u0085\b\t\u0001\t\u0003\t\u0088\b\t\u0001\n" +
-                    "\u0001\n\u0001\n\u0005\n\u008d\b\n\n\n\u000c\n\u0090\t\n\u0001\u000b\u0001" +
+                    "\u0001\u0004\u0001\u0004\u0001\u0004\u0003\u0004X\b\u0004\u0001\u0004" +
+                    "\u0001\u0004\u0003\u0004\\\b\u0004\u0001\u0005\u0001\u0005\u0001\u0005" +
+                    "\u0001\u0005\u0001\u0005\u0001\u0005\u0001\u0005\u0001\u0005\u0003\u0005" +
+                    "f\b\u0005\u0001\u0006\u0001\u0006\u0001\u0006\u0001\u0006\u0003\u0006" +
+                    "l\b\u0006\u0001\u0006\u0001\u0006\u0001\u0006\u0005\u0006q\b\u0006\n\u0006" +
+                    "\u000c\u0006t\t\u0006\u0001\u0006\u0001\u0006\u0001\u0007\u0001\u0007\u0001" +
+                    "\u0007\u0001\u0007\u0001\u0007\u0001\u0007\u0001\b\u0004\b\u007f\b\b\u000b" +
+                    "\b\u000c\b\u0080\u0001\t\u0001\t\u0001\t\u0001\t\u0003\t\u0087\b\t\u0001\t" +
+                    "\u0003\t\u008a\b\t\u0001\n\u0001\n\u0001\n\u0005\n\u008f\b\n\n\n\u000c\n\u0092" +
+                    "\t\n\u0001\u000b\u0001\u000b\u0001\u000b\u0001\u000b\u0001\u000b\u0001" +
                     "\u000b\u0001\u000b\u0001\u000b\u0001\u000b\u0001\u000b\u0001\u000b\u0001" +
                     "\u000b\u0001\u000b\u0001\u000b\u0001\u000b\u0001\u000b\u0001\u000b\u0001" +
                     "\u000b\u0001\u000b\u0001\u000b\u0001\u000b\u0001\u000b\u0001\u000b\u0001" +
+                    "\u000b\u0001\u000b\u0001\u000b\u0005\u000b\u00ae\b\u000b\n\u000b\u000c\u000b" +
+                    "\u00b1\t\u000b\u0001\u000b\u0001\u000b\u0001\u000b\u0001\u000b\u0001\u000b" +
+                    "\u0001\u000b\u0001\u000b\u0001\u000b\u0005\u000b\u00bb\b\u000b\n\u000b" +
+                    "\u000c\u000b\u00be\t\u000b\u0001\u000b\u0001\u000b\u0001\u000b\u0001\u000b" +
+                    "\u0005\u000b\u00c4\b\u000b\n\u000b\u000c\u000b\u00c7\t\u000b\u0001\u000b\u0001" +
                     "\u000b\u0001\u000b\u0001\u000b\u0001\u000b\u0001\u000b\u0001\u000b\u0001" +
-                    "\u000b\u0005\u000b\u00ac\b\u000b\n\u000b\u000c\u000b\u00af\t\u000b\u0001\u000b" +
+                    "\u000b\u0005\u000b\u00d1\b\u000b\n\u000b\u000c\u000b\u00d4\t\u000b\u0001\u000b" +
                     "\u0001\u000b\u0001\u000b\u0001\u000b\u0001\u000b\u0001\u000b\u0001\u000b" +
-                    "\u0001\u000b\u0005\u000b\u00b9\b\u000b\n\u000b\u000c\u000b\u00bc\t\u000b\u0001" +
-                    "\u000b\u0001\u000b\u0001\u000b\u0001\u000b\u0005\u000b\u00c2\b\u000b\n" +
-                    "\u000b\u000c\u000b\u00c5\t\u000b\u0001\u000b\u0001\u000b\u0001\u000b\u0001" +
-                    "\u000b\u0001\u000b\u0001\u000b\u0001\u000b\u0001\u000b\u0005\u000b\u00cf" +
-                    "\b\u000b\n\u000b\u000c\u000b\u00d2\t\u000b\u0001\u000b\u0001\u000b\u0001\u000b" +
-                    "\u0001\u000b\u0001\u000b\u0001\u000b\u0001\u000b\u0001\u000b\u0001\u000b" +
-                    "\u0001\u000b\u0005\u000b\u00de\b\u000b\n\u000b\u000c\u000b\u00e1\t\u000b\u0001" +
-                    "\u000b\u0001\u000b\u0001\u000b\u0001\u000b\u0001\u000b\u0001\u000b\u0003" +
-                    "\u000b\u00e9\b\u000b\u0001\u000b\u0003\u000b\u00ec\b\u000b\u0001\u000c\u0001" +
-                    "\u000c\u0001\u000c\u0001\u000c\u0001\u000c\u0003\u000c\u00f3\b\u000c\u0001\u000c\u0001\u000c\u0001\u000c\u0001" +
-                    "\u000c\u0003\u000c\u00f9\b\u000c\u0001\u000c\u0001\u000c\u0001\u000c\u0001\u000c\u0001\u000c\u0001\u000c\u0001" +
-                    "\u000c\u0003\u000c\u0102\b\u000c\u0001\u000c\u0001\u000c\u0001\u000c\u0001\u000c\u0001\u000c\u0001\u000c\u0001" +
+                    "\u0001\u000b\u0001\u000b\u0001\u000b\u0005\u000b\u00e0\b\u000b\n\u000b" +
+                    "\u000c\u000b\u00e3\t\u000b\u0001\u000b\u0001\u000b\u0001\u000b\u0001\u000b" +
+                    "\u0001\u000b\u0001\u000b\u0003\u000b\u00eb\b\u000b\u0001\u000b\u0003\u000b" +
+                    "\u00ee\b\u000b\u0001\u000c\u0001\u000c\u0001\u000c\u0001\u000c\u0001\u000c\u0003\u000c\u00f5\b" +
+                    "\u000c\u0001\u000c\u0001\u000c\u0001\u000c\u0001\u000c\u0003\u000c\u00fb\b\u000c\u0001\u000c\u0001\u000c\u0001" +
+                    "\u000c\u0001\u000c\u0001\u000c\u0001\u000c\u0001\u000c\u0003\u000c\u0104\b\u000c\u0001\u000c\u0001\u000c\u0001" +
                     "\u000c\u0001\u000c\u0001\u000c\u0001\u000c\u0001\u000c\u0001\u000c\u0001\u000c\u0001\u000c\u0001\u000c\u0001" +
                     "\u000c\u0001\u000c\u0001\u000c\u0001\u000c\u0001\u000c\u0001\u000c\u0001\u000c\u0001\u000c\u0001\u000c\u0001" +
-                    "\u000c\u0001\u000c\u0001\u000c\u0001\u000c\u0001\u000c\u0001\u000c\u0001\u000c\u0003\u000c\u0123\b\u000c\u0001" +
-                    "\u000c\u0001\u000c\u0001\u000c\u0001\u000c\u0001\u000c\u0003\u000c\u012a\b\u000c\u0001\u000c\u0001\u000c\u0001" +
-                    "\u000c\u0001\u000c\u0001\u000c\u0005\u000c\u0131\b\u000c\n\u000c\u000c\u000c\u0134\t\u000c\u0001\r\u0001\r" +
-                    "\u0005\r\u0138\b\r\n\r\u000c\r\u013b\t\r\u0001\r\u0001\r\u0001\r\u0001\r\u0001" +
-                    "\r\u0001\r\u0001\r\u0001\r\u0003\r\u0145\b\r\u0001\r\u0000\u0001\u0018" +
-                    "\u000e\u0000\u0002\u0004\u0006\b\n\u000c\u000e\u0010\u0012\u0014\u0016\u0018" +
-                    "\u001a\u0000\u0006\u0001\u0000\u0004\u0006\u0001\u0000\u0007\t\u0001\u0000" +
-                    "\u0004\u0005\u0001\u0000\n\u000f\u0001\u0000\u0010\u0011\u0001\u0000\u0015" +
-                    "\u0015\u0174\u0000\u001c\u0001\u0000\u0000\u0000\u0002%\u0001\u0000\u0000" +
-                    "\u0000\u0004.\u0001\u0000\u0000\u0000\u00065\u0001\u0000\u0000\u0000\b" +
-                    "Y\u0001\u0000\u0000\u0000\nc\u0001\u0000\u0000\u0000\u000ce\u0001\u0000\u0000" +
-                    "\u0000\u000eu\u0001\u0000\u0000\u0000\u0010|\u0001\u0000\u0000\u0000\u0012" +
-                    "\u0087\u0001\u0000\u0000\u0000\u0014\u0089\u0001\u0000\u0000\u0000\u0016" +
-                    "\u00eb\u0001\u0000\u0000\u0000\u0018\u0101\u0001\u0000\u0000\u0000\u001a" +
-                    "\u0144\u0001\u0000\u0000\u0000\u001c \u0003\u0002\u0001\u0000\u001d\u001f" +
-                    "\u0003\b\u0004\u0000\u001e\u001d\u0001\u0000\u0000\u0000\u001f\"\u0001" +
-                    "\u0000\u0000\u0000 \u001e\u0001\u0000\u0000\u0000 !\u0001\u0000\u0000" +
-                    "\u0000!#\u0001\u0000\u0000\u0000\" \u0001\u0000\u0000\u0000#$\u0005\u0000" +
-                    "\u0000\u0001$\u0001\u0001\u0000\u0000\u0000%&\u0005\u0001\u0000\u0000" +
-                    "&\'\u0005/\u0000\u0000\'+\u0005\u001d\u0000\u0000(*\u0003\u0004\u0002" +
-                    "\u0000)(\u0001\u0000\u0000\u0000*-\u0001\u0000\u0000\u0000+)\u0001\u0000" +
-                    "\u0000\u0000+,\u0001\u0000\u0000\u0000,\u0003\u0001\u0000\u0000\u0000" +
-                    "-+\u0001\u0000\u0000\u0000./\u0005\u0002\u0000\u0000/0\u0005/\u0000\u0000" +
-                    "01\u0005\u0016\u0000\u000012\u0003\u0006\u0003\u000023\u0005\u0017\u0000" +
-                    "\u000034\u0005\u001d\u0000\u00004\u0005\u0001\u0000\u0000\u00005:\u0005" +
-                    "/\u0000\u000067\u0005\u001c\u0000\u000079\u0005/\u0000\u000086\u0001\u0000" +
-                    "\u0000\u00009<\u0001\u0000\u0000\u0000:8\u0001\u0000\u0000\u0000:;\u0001" +
-                    "\u0000\u0000\u0000;\u0007\u0001\u0000\u0000\u0000<:\u0001\u0000\u0000" +
-                    "\u0000=>\u0005/\u0000\u0000>@\u0005/\u0000\u0000?A\u0003\u0010\b\u0000" +
-                    "@?\u0001\u0000\u0000\u0000@A\u0001\u0000\u0000\u0000AZ\u0001\u0000\u0000" +
-                    "\u0000BC\u0005/\u0000\u0000CE\u0005/\u0000\u0000DF\u0003\u0010\b\u0000" +
-                    "ED\u0001\u0000\u0000\u0000EF\u0001\u0000\u0000\u0000FG\u0001\u0000\u0000" +
-                    "\u0000GK\u0005\u0018\u0000\u0000HJ\u0003\n\u0005\u0000IH\u0001\u0000\u0000" +
-                    "\u0000JM\u0001\u0000\u0000\u0000KI\u0001\u0000\u0000\u0000KL\u0001\u0000" +
-                    "\u0000\u0000LN\u0001\u0000\u0000\u0000MK\u0001\u0000\u0000\u0000NZ\u0005" +
-                    "\u0019\u0000\u0000OP\u0005/\u0000\u0000PQ\u0005\u0016\u0000\u0000QR\u0003" +
-                    "\u0006\u0003\u0000RS\u0005\u0017\u0000\u0000SU\u0005\u0003\u0000\u0000" +
-                    "TV\u0003\u0010\b\u0000UT\u0001\u0000\u0000\u0000UV\u0001\u0000\u0000\u0000" +
-                    "VZ\u0001\u0000\u0000\u0000WZ\u0003\u000c\u0006\u0000XZ\u0003\u000e\u0007\u0000" +
-                    "Y=\u0001\u0000\u0000\u0000YB\u0001\u0000\u0000\u0000YO\u0001\u0000\u0000" +
-                    "\u0000YW\u0001\u0000\u0000\u0000YX\u0001\u0000\u0000\u0000Z\t\u0001\u0000" +
-                    "\u0000\u0000[d\u0003\u000c\u0006\u0000\\d\u0003\u000e\u0007\u0000]^\u0005" +
-                    "%\u0000\u0000^_\u0005/\u0000\u0000_`\u0005\u001f\u0000\u0000`a\u0003\u0018" +
-                    "\u000c\u0000ab\u0005\u001d\u0000\u0000bd\u0001\u0000\u0000\u0000c[\u0001\u0000" +
-                    "\u0000\u0000c\\\u0001\u0000\u0000\u0000c]\u0001\u0000\u0000\u0000d\u000b" +
-                    "\u0001\u0000\u0000\u0000ef\u0005$\u0000\u0000fg\u0005/\u0000\u0000gi\u0005" +
-                    "\u0016\u0000\u0000hj\u0003\u0006\u0003\u0000ih\u0001\u0000\u0000\u0000" +
-                    "ij\u0001\u0000\u0000\u0000jk\u0001\u0000\u0000\u0000kl\u0005\u0017\u0000" +
-                    "\u0000lp\u0005\u0018\u0000\u0000mo\u0003\u0016\u000b\u0000nm\u0001\u0000" +
-                    "\u0000\u0000or\u0001\u0000\u0000\u0000pn\u0001\u0000\u0000\u0000pq\u0001" +
-                    "\u0000\u0000\u0000qs\u0001\u0000\u0000\u0000rp\u0001\u0000\u0000\u0000" +
-                    "st\u0005\u0019\u0000\u0000t\r\u0001\u0000\u0000\u0000uv\u0005)\u0000\u0000" +
-                    "vw\u0005/\u0000\u0000wx\u0005\u001f\u0000\u0000xy\u0003\u0018\u000c\u0000" +
-                    "yz\u0005\u001d\u0000\u0000z\u000f\u0001\u0000\u0000\u0000{}\u0003\u0012" +
-                    "\t\u0000|{\u0001\u0000\u0000\u0000}~\u0001\u0000\u0000\u0000~|\u0001\u0000" +
-                    "\u0000\u0000~\u007f\u0001\u0000\u0000\u0000\u007f\u0011\u0001\u0000\u0000" +
-                    "\u0000\u0080\u0088\u0005.\u0000\u0000\u0081\u0082\u0005.\u0000\u0000\u0082" +
-                    "\u0084\u0005\u0016\u0000\u0000\u0083\u0085\u0003\u0014\n\u0000\u0084\u0083" +
-                    "\u0001\u0000\u0000\u0000\u0084\u0085\u0001\u0000\u0000\u0000\u0085\u0086" +
-                    "\u0001\u0000\u0000\u0000\u0086\u0088\u0005\u0017\u0000\u0000\u0087\u0080" +
-                    "\u0001\u0000\u0000\u0000\u0087\u0081\u0001\u0000\u0000\u0000\u0088\u0013" +
-                    "\u0001\u0000\u0000\u0000\u0089\u008e\u0003\u0018\u000c\u0000\u008a\u008b\u0005" +
-                    "\u001c\u0000\u0000\u008b\u008d\u0003\u0018\u000c\u0000\u008c\u008a\u0001\u0000" +
-                    "\u0000\u0000\u008d\u0090\u0001\u0000\u0000\u0000\u008e\u008c\u0001\u0000" +
-                    "\u0000\u0000\u008e\u008f\u0001\u0000\u0000\u0000\u008f\u0015\u0001\u0000" +
-                    "\u0000\u0000\u0090\u008e\u0001\u0000\u0000\u0000\u0091\u0092\u0003\u0018" +
-                    "\u000c\u0000\u0092\u0093\u0005\u001d\u0000\u0000\u0093\u00ec\u0001\u0000\u0000" +
-                    "\u0000\u0094\u0095\u0005%\u0000\u0000\u0095\u0096\u0005/\u0000\u0000\u0096" +
-                    "\u0097\u0005\u001f\u0000\u0000\u0097\u0098\u0003\u0018\u000c\u0000\u0098\u0099" +
-                    "\u0005\u001d\u0000\u0000\u0099\u00ec\u0001\u0000\u0000\u0000\u009a\u009b" +
-                    "\u0005)\u0000\u0000\u009b\u009c\u0005/\u0000\u0000\u009c\u009d\u0005\u001f" +
-                    "\u0000\u0000\u009d\u009e\u0003\u0018\u000c\u0000\u009e\u009f\u0005\u001d\u0000" +
-                    "\u0000\u009f\u00ec\u0001\u0000\u0000\u0000\u00a0\u00a1\u0005/\u0000\u0000" +
-                    "\u00a1\u00a2\u0005\u001f\u0000\u0000\u00a2\u00a3\u0003\u0018\u000c\u0000\u00a3" +
-                    "\u00a4\u0005\u001d\u0000\u0000\u00a4\u00ec\u0001\u0000\u0000\u0000\u00a5" +
-                    "\u00a6\u0005\"\u0000\u0000\u00a6\u00a7\u0005\u0016\u0000\u0000\u00a7\u00a8" +
-                    "\u0003\u0018\u000c\u0000\u00a8\u00a9\u0005\u0017\u0000\u0000\u00a9\u00ad\u0005" +
-                    "\u0018\u0000\u0000\u00aa\u00ac\u0003\u0016\u000b\u0000\u00ab\u00aa\u0001" +
-                    "\u0000\u0000\u0000\u00ac\u00af\u0001\u0000\u0000\u0000\u00ad\u00ab\u0001" +
-                    "\u0000\u0000\u0000\u00ad\u00ae\u0001\u0000\u0000\u0000\u00ae\u00b0\u0001" +
-                    "\u0000\u0000\u0000\u00af\u00ad\u0001\u0000\u0000\u0000\u00b0\u00b1\u0005" +
-                    "\u0019\u0000\u0000\u00b1\u00ec\u0001\u0000\u0000\u0000\u00b2\u00b3\u0005" +
-                    "\"\u0000\u0000\u00b3\u00b4\u0005\u0016\u0000\u0000\u00b4\u00b5\u0003\u0018" +
-                    "\u000c\u0000\u00b5\u00b6\u0005\u0017\u0000\u0000\u00b6\u00ba\u0005\u0018\u0000" +
-                    "\u0000\u00b7\u00b9\u0003\u0016\u000b\u0000\u00b8\u00b7\u0001\u0000\u0000" +
-                    "\u0000\u00b9\u00bc\u0001\u0000\u0000\u0000\u00ba\u00b8\u0001\u0000\u0000" +
-                    "\u0000\u00ba\u00bb\u0001\u0000\u0000\u0000\u00bb\u00bd\u0001\u0000\u0000" +
-                    "\u0000\u00bc\u00ba\u0001\u0000\u0000\u0000\u00bd\u00be\u0005\u0019\u0000" +
-                    "\u0000\u00be\u00bf\u0005&\u0000\u0000\u00bf\u00c3\u0005\u0018\u0000\u0000" +
-                    "\u00c0\u00c2\u0003\u0016\u000b\u0000\u00c1\u00c0\u0001\u0000\u0000\u0000" +
-                    "\u00c2\u00c5\u0001\u0000\u0000\u0000\u00c3\u00c1\u0001\u0000\u0000\u0000" +
-                    "\u00c3\u00c4\u0001\u0000\u0000\u0000\u00c4\u00c6\u0001\u0000\u0000\u0000" +
-                    "\u00c5\u00c3\u0001\u0000\u0000\u0000\u00c6\u00c7\u0005\u0019\u0000\u0000" +
-                    "\u00c7\u00ec\u0001\u0000\u0000\u0000\u00c8\u00c9\u0005+\u0000\u0000\u00c9" +
-                    "\u00ca\u0005\u0016\u0000\u0000\u00ca\u00cb\u0003\u0018\u000c\u0000\u00cb\u00cc" +
-                    "\u0005\u0017\u0000\u0000\u00cc\u00d0\u0005\u0018\u0000\u0000\u00cd\u00cf" +
-                    "\u0003\u0016\u000b\u0000\u00ce\u00cd\u0001\u0000\u0000\u0000\u00cf\u00d2" +
-                    "\u0001\u0000\u0000\u0000\u00d0\u00ce\u0001\u0000\u0000\u0000\u00d0\u00d1" +
-                    "\u0001\u0000\u0000\u0000\u00d1\u00d3\u0001\u0000\u0000\u0000\u00d2\u00d0" +
-                    "\u0001\u0000\u0000\u0000\u00d3\u00d4\u0005\u0019\u0000\u0000\u00d4\u00ec" +
-                    "\u0001\u0000\u0000\u0000\u00d5\u00d6\u0005#\u0000\u0000\u00d6\u00d7\u0005" +
-                    "\u0016\u0000\u0000\u00d7\u00d8\u0005/\u0000\u0000\u00d8\u00d9\u0005!\u0000" +
-                    "\u0000\u00d9\u00da\u0003\u0018\u000c\u0000\u00da\u00db\u0005\u0017\u0000\u0000" +
-                    "\u00db\u00df\u0005\u0018\u0000\u0000\u00dc\u00de\u0003\u0016\u000b\u0000" +
-                    "\u00dd\u00dc\u0001\u0000\u0000\u0000\u00de\u00e1\u0001\u0000\u0000\u0000" +
-                    "\u00df\u00dd\u0001\u0000\u0000\u0000\u00df\u00e0\u0001\u0000\u0000\u0000" +
-                    "\u00e0\u00e2\u0001\u0000\u0000\u0000\u00e1\u00df\u0001\u0000\u0000\u0000" +
-                    "\u00e2\u00e3\u0005\u0019\u0000\u0000\u00e3\u00ec\u0001\u0000\u0000\u0000" +
-                    "\u00e4\u00e5\u0005(\u0000\u0000\u00e5\u00ec\u0005\u001d\u0000\u0000\u00e6" +
-                    "\u00e8\u0005,\u0000\u0000\u00e7\u00e9\u0003\u0018\u000c\u0000\u00e8\u00e7" +
-                    "\u0001\u0000\u0000\u0000\u00e8\u00e9\u0001\u0000\u0000\u0000\u00e9\u00ea" +
-                    "\u0001\u0000\u0000\u0000\u00ea\u00ec\u0005\u001d\u0000\u0000\u00eb\u0091" +
-                    "\u0001\u0000\u0000\u0000\u00eb\u0094\u0001\u0000\u0000\u0000\u00eb\u009a" +
-                    "\u0001\u0000\u0000\u0000\u00eb\u00a0\u0001\u0000\u0000\u0000\u00eb\u00a5" +
-                    "\u0001\u0000\u0000\u0000\u00eb\u00b2\u0001\u0000\u0000\u0000\u00eb\u00c8" +
-                    "\u0001\u0000\u0000\u0000\u00eb\u00d5\u0001\u0000\u0000\u0000\u00eb\u00e4" +
-                    "\u0001\u0000\u0000\u0000\u00eb\u00e6\u0001\u0000\u0000\u0000\u00ec\u0017" +
-                    "\u0001\u0000\u0000\u0000\u00ed\u00ee\u0006\u000c\uffff\uffff\u0000\u00ee\u0102" +
-                    "\u0003\u001a\r\u0000\u00ef\u0102\u0005/\u0000\u0000\u00f0\u00f2\u0005" +
-                    "\u001a\u0000\u0000\u00f1\u00f3\u0003\u0014\n\u0000\u00f2\u00f1\u0001\u0000" +
-                    "\u0000\u0000\u00f2\u00f3\u0001\u0000\u0000\u0000\u00f3\u00f4\u0001\u0000" +
-                    "\u0000\u0000\u00f4\u0102\u0005\u001b\u0000\u0000\u00f5\u00f6\u0005/\u0000" +
-                    "\u0000\u00f6\u00f8\u0005\u0016\u0000\u0000\u00f7\u00f9\u0003\u0014\n\u0000" +
-                    "\u00f8\u00f7\u0001\u0000\u0000\u0000\u00f8\u00f9\u0001\u0000\u0000\u0000" +
-                    "\u00f9\u00fa\u0001\u0000\u0000\u0000\u00fa\u0102\u0005\u0017\u0000\u0000" +
-                    "\u00fb\u00fc\u0005\u0016\u0000\u0000\u00fc\u00fd\u0003\u0018\u000c\u0000\u00fd" +
-                    "\u00fe\u0005\u0017\u0000\u0000\u00fe\u0102\u0001\u0000\u0000\u0000\u00ff" +
-                    "\u0100\u0007\u0000\u0000\u0000\u0100\u0102\u0003\u0018\u000c\b\u0101\u00ed" +
-                    "\u0001\u0000\u0000\u0000\u0101\u00ef\u0001\u0000\u0000\u0000\u0101\u00f0" +
-                    "\u0001\u0000\u0000\u0000\u0101\u00f5\u0001\u0000\u0000\u0000\u0101\u00fb" +
-                    "\u0001\u0000\u0000\u0000\u0101\u00ff\u0001\u0000\u0000\u0000\u0102\u0132" +
-                    "\u0001\u0000\u0000\u0000\u0103\u0104\n\u0007\u0000\u0000\u0104\u0105\u0007" +
-                    "\u0001\u0000\u0000\u0105\u0131\u0003\u0018\u000c\b\u0106\u0107\n\u0006\u0000" +
-                    "\u0000\u0107\u0108\u0007\u0002\u0000\u0000\u0108\u0131\u0003\u0018\u000c\u0007" +
-                    "\u0109\u010a\n\u0005\u0000\u0000\u010a\u010b\u0007\u0003\u0000\u0000\u010b" +
-                    "\u0131\u0003\u0018\u000c\u0006\u010c\u010d\n\u0004\u0000\u0000\u010d\u010e" +
-                    "\u0007\u0004\u0000\u0000\u010e\u0131\u0003\u0018\u000c\u0005\u010f\u0110\n" +
-                    "\u0003\u0000\u0000\u0110\u0111\u0005\u001e\u0000\u0000\u0111\u0112\u0003" +
-                    "\u0018\u000c\u0000\u0112\u0113\u0005!\u0000\u0000\u0113\u0114\u0003\u0018" +
-                    "\u000c\u0004\u0114\u0131\u0001\u0000\u0000\u0000\u0115\u0116\n\u000b\u0000" +
-                    "\u0000\u0116\u0117\u0005\u001a\u0000\u0000\u0117\u0118\u0003\u0018\u000c\u0000" +
-                    "\u0118\u0119\u0005\u001b\u0000\u0000\u0119\u0131\u0001\u0000\u0000\u0000" +
-                    "\u011a\u011b\n\n\u0000\u0000\u011b\u011c\u0005 \u0000\u0000\u011c\u0131" +
-                    "\u0005/\u0000\u0000\u011d\u011e\n\t\u0000\u0000\u011e\u011f\u0005 \u0000" +
-                    "\u0000\u011f\u0120\u0005/\u0000\u0000\u0120\u0122\u0005\u0016\u0000\u0000" +
-                    "\u0121\u0123\u0003\u0014\n\u0000\u0122\u0121\u0001\u0000\u0000\u0000\u0122" +
-                    "\u0123\u0001\u0000\u0000\u0000\u0123\u0124\u0001\u0000\u0000\u0000\u0124" +
-                    "\u0131\u0005\u0017\u0000\u0000\u0125\u0126\n\u0002\u0000\u0000\u0126\u0127" +
-                    "\u0005\u0012\u0000\u0000\u0127\u0129\u0003\u0018\u000c\u0000\u0128\u012a\u0005" +
-                    "\u0013\u0000\u0000\u0129\u0128\u0001\u0000\u0000\u0000\u0129\u012a\u0001" +
-                    "\u0000\u0000\u0000\u012a\u0131\u0001\u0000\u0000\u0000\u012b\u012c\n\u0001" +
-                    "\u0000\u0000\u012c\u012d\u0005\u0012\u0000\u0000\u012d\u012e\u0003\u0018" +
-                    "\u000c\u0000\u012e\u012f\u0005\u0014\u0000\u0000\u012f\u0131\u0001\u0000\u0000" +
-                    "\u0000\u0130\u0103\u0001\u0000\u0000\u0000\u0130\u0106\u0001\u0000\u0000" +
-                    "\u0000\u0130\u0109\u0001\u0000\u0000\u0000\u0130\u010c\u0001\u0000\u0000" +
-                    "\u0000\u0130\u010f\u0001\u0000\u0000\u0000\u0130\u0115\u0001\u0000\u0000" +
-                    "\u0000\u0130\u011a\u0001\u0000\u0000\u0000\u0130\u011d\u0001\u0000\u0000" +
-                    "\u0000\u0130\u0125\u0001\u0000\u0000\u0000\u0130\u012b\u0001\u0000\u0000" +
-                    "\u0000\u0131\u0134\u0001\u0000\u0000\u0000\u0132\u0130\u0001\u0000\u0000" +
-                    "\u0000\u0132\u0133\u0001\u0000\u0000\u0000\u0133\u0019\u0001\u0000\u0000" +
-                    "\u0000\u0134\u0132\u0001\u0000\u0000\u0000\u0135\u0139\u0005\u0015\u0000" +
-                    "\u0000\u0136\u0138\b\u0005\u0000\u0000\u0137\u0136\u0001\u0000\u0000\u0000" +
-                    "\u0138\u013b\u0001\u0000\u0000\u0000\u0139\u0137\u0001\u0000\u0000\u0000" +
-                    "\u0139\u013a\u0001\u0000\u0000\u0000\u013a\u013c\u0001\u0000\u0000\u0000" +
-                    "\u013b\u0139\u0001\u0000\u0000\u0000\u013c\u0145\u0005\u0015\u0000\u0000" +
-                    "\u013d\u0145\u00050\u0000\u0000\u013e\u0145\u00051\u0000\u0000\u013f\u0145" +
-                    "\u0005-\u0000\u0000\u0140\u0141\u00050\u0000\u0000\u0141\u0145\u0005-" +
-                    "\u0000\u0000\u0142\u0145\u0005\'\u0000\u0000\u0143\u0145\u0005*\u0000" +
-                    "\u0000\u0144\u0135\u0001\u0000\u0000\u0000\u0144\u013d\u0001\u0000\u0000" +
-                    "\u0000\u0144\u013e\u0001\u0000\u0000\u0000\u0144\u013f\u0001\u0000\u0000" +
-                    "\u0000\u0144\u0140\u0001\u0000\u0000\u0000\u0144\u0142\u0001\u0000\u0000" +
-                    "\u0000\u0144\u0143\u0001\u0000\u0000\u0000\u0145\u001b\u0001\u0000\u0000" +
-                    "\u0000\u001f +:@EKUYcip~\u0084\u0087\u008e\u00ad\u00ba\u00c3\u00d0\u00df" +
-                    "\u00e8\u00eb\u00f2\u00f8\u0101\u0122\u0129\u0130\u0132\u0139\u0144"
+                    "\u000c\u0001\u000c\u0001\u000c\u0001\u000c\u0001\u000c\u0001\u000c\u0001\u000c\u0001\u000c\u0001\u000c\u0001" +
+                    "\u000c\u0001\u000c\u0001\u000c\u0001\u000c\u0001\u000c\u0001\u000c\u0003\u000c\u0129\b\u000c\u0001\u000c\u0001" +
+                    "\u000c\u0001\u000c\u0001\u000c\u0001\u000c\u0003\u000c\u0130\b\u000c\u0001\u000c\u0001\u000c\u0001\u000c\u0001" +
+                    "\u000c\u0001\u000c\u0005\u000c\u0137\b\u000c\n\u000c\u000c\u000c\u013a\t\u000c\u0001\r\u0001\r\u0001\r" +
+                    "\u0001\r\u0001\r\u0001\r\u0001\r\u0001\r\u0003\r\u0144\b\r\u0001\r\u0000" +
+                    "\u0001\u0018\u000e\u0000\u0002\u0004\u0006\b\n\u000c\u000e\u0010\u0012\u0014" +
+                    "\u0016\u0018\u001a\u0000\u0005\u0001\u0000\u0004\u0006\u0001\u0000\u0007" +
+                    "\t\u0001\u0000\u0004\u0005\u0001\u0000\n\u000f\u0001\u0000\u0010\u0011" +
+                    "\u0176\u0000\u001c\u0001\u0000\u0000\u0000\u0002%\u0001\u0000\u0000\u0000" +
+                    "\u0004.\u0001\u0000\u0000\u0000\u00065\u0001\u0000\u0000\u0000\b[\u0001" +
+                    "\u0000\u0000\u0000\ne\u0001\u0000\u0000\u0000\u000cg\u0001\u0000\u0000\u0000" +
+                    "\u000ew\u0001\u0000\u0000\u0000\u0010~\u0001\u0000\u0000\u0000\u0012\u0089" +
+                    "\u0001\u0000\u0000\u0000\u0014\u008b\u0001\u0000\u0000\u0000\u0016\u00ed" +
+                    "\u0001\u0000\u0000\u0000\u0018\u0103\u0001\u0000\u0000\u0000\u001a\u0143" +
+                    "\u0001\u0000\u0000\u0000\u001c \u0003\u0002\u0001\u0000\u001d\u001f\u0003" +
+                    "\b\u0004\u0000\u001e\u001d\u0001\u0000\u0000\u0000\u001f\"\u0001\u0000" +
+                    "\u0000\u0000 \u001e\u0001\u0000\u0000\u0000 !\u0001\u0000\u0000\u0000" +
+                    "!#\u0001\u0000\u0000\u0000\" \u0001\u0000\u0000\u0000#$\u0005\u0000\u0000" +
+                    "\u0001$\u0001\u0001\u0000\u0000\u0000%&\u0005\u0001\u0000\u0000&\'\u0005" +
+                    "1\u0000\u0000\'+\u0005\u001e\u0000\u0000(*\u0003\u0004\u0002\u0000)(\u0001" +
+                    "\u0000\u0000\u0000*-\u0001\u0000\u0000\u0000+)\u0001\u0000\u0000\u0000" +
+                    "+,\u0001\u0000\u0000\u0000,\u0003\u0001\u0000\u0000\u0000-+\u0001\u0000" +
+                    "\u0000\u0000./\u0005\u0002\u0000\u0000/0\u00051\u0000\u000001\u0005\u0017" +
+                    "\u0000\u000012\u0003\u0006\u0003\u000023\u0005\u0018\u0000\u000034\u0005" +
+                    "\u001e\u0000\u00004\u0005\u0001\u0000\u0000\u00005:\u00051\u0000\u0000" +
+                    "67\u0005\u001d\u0000\u000079\u00051\u0000\u000086\u0001\u0000\u0000\u0000" +
+                    "9<\u0001\u0000\u0000\u0000:8\u0001\u0000\u0000\u0000:;\u0001\u0000\u0000" +
+                    "\u0000;\u0007\u0001\u0000\u0000\u0000<:\u0001\u0000\u0000\u0000=>\u0005" +
+                    "1\u0000\u0000>@\u00051\u0000\u0000?A\u0003\u0010\b\u0000@?\u0001\u0000" +
+                    "\u0000\u0000@A\u0001\u0000\u0000\u0000A\\\u0001\u0000\u0000\u0000BC\u0005" +
+                    "1\u0000\u0000CE\u00051\u0000\u0000DF\u0003\u0010\b\u0000ED\u0001\u0000" +
+                    "\u0000\u0000EF\u0001\u0000\u0000\u0000FG\u0001\u0000\u0000\u0000GK\u0005" +
+                    "\u0019\u0000\u0000HJ\u0003\n\u0005\u0000IH\u0001\u0000\u0000\u0000JM\u0001" +
+                    "\u0000\u0000\u0000KI\u0001\u0000\u0000\u0000KL\u0001\u0000\u0000\u0000" +
+                    "LN\u0001\u0000\u0000\u0000MK\u0001\u0000\u0000\u0000N\\\u0005\u001a\u0000" +
+                    "\u0000OP\u00051\u0000\u0000P\\\u0003\u0006\u0003\u0000QR\u00051\u0000" +
+                    "\u0000RS\u0005\u0017\u0000\u0000ST\u0003\u0006\u0003\u0000TU\u0005\u0018" +
+                    "\u0000\u0000UW\u0005\u0003\u0000\u0000VX\u0003\u0010\b\u0000WV\u0001\u0000" +
+                    "\u0000\u0000WX\u0001\u0000\u0000\u0000X\\\u0001\u0000\u0000\u0000Y\\\u0003" +
+                    "\u000c\u0006\u0000Z\\\u0003\u000e\u0007\u0000[=\u0001\u0000\u0000\u0000[B" +
+                    "\u0001\u0000\u0000\u0000[O\u0001\u0000\u0000\u0000[Q\u0001\u0000\u0000" +
+                    "\u0000[Y\u0001\u0000\u0000\u0000[Z\u0001\u0000\u0000\u0000\\\t\u0001\u0000" +
+                    "\u0000\u0000]f\u0003\u000c\u0006\u0000^f\u0003\u000e\u0007\u0000_`\u0005&" +
+                    "\u0000\u0000`a\u00051\u0000\u0000ab\u0005 \u0000\u0000bc\u0003\u0018\u000c" +
+                    "\u0000cd\u0005\u001e\u0000\u0000df\u0001\u0000\u0000\u0000e]\u0001\u0000" +
+                    "\u0000\u0000e^\u0001\u0000\u0000\u0000e_\u0001\u0000\u0000\u0000f\u000b" +
+                    "\u0001\u0000\u0000\u0000gh\u0005%\u0000\u0000hi\u00051\u0000\u0000ik\u0005" +
+                    "\u0017\u0000\u0000jl\u0003\u0006\u0003\u0000kj\u0001\u0000\u0000\u0000" +
+                    "kl\u0001\u0000\u0000\u0000lm\u0001\u0000\u0000\u0000mn\u0005\u0018\u0000" +
+                    "\u0000nr\u0005\u0019\u0000\u0000oq\u0003\u0016\u000b\u0000po\u0001\u0000" +
+                    "\u0000\u0000qt\u0001\u0000\u0000\u0000rp\u0001\u0000\u0000\u0000rs\u0001" +
+                    "\u0000\u0000\u0000su\u0001\u0000\u0000\u0000tr\u0001\u0000\u0000\u0000" +
+                    "uv\u0005\u001a\u0000\u0000v\r\u0001\u0000\u0000\u0000wx\u0005*\u0000\u0000" +
+                    "xy\u00051\u0000\u0000yz\u0005 \u0000\u0000z{\u0003\u0018\u000c\u0000{|\u0005" +
+                    "\u001e\u0000\u0000|\u000f\u0001\u0000\u0000\u0000}\u007f\u0003\u0012\t" +
+                    "\u0000~}\u0001\u0000\u0000\u0000\u007f\u0080\u0001\u0000\u0000\u0000\u0080" +
+                    "~\u0001\u0000\u0000\u0000\u0080\u0081\u0001\u0000\u0000\u0000\u0081\u0011" +
+                    "\u0001\u0000\u0000\u0000\u0082\u008a\u00050\u0000\u0000\u0083\u0084\u0005" +
+                    "0\u0000\u0000\u0084\u0086\u0005\u0017\u0000\u0000\u0085\u0087\u0003\u0014" +
+                    "\n\u0000\u0086\u0085\u0001\u0000\u0000\u0000\u0086\u0087\u0001\u0000\u0000" +
+                    "\u0000\u0087\u0088\u0001\u0000\u0000\u0000\u0088\u008a\u0005\u0018\u0000" +
+                    "\u0000\u0089\u0082\u0001\u0000\u0000\u0000\u0089\u0083\u0001\u0000\u0000" +
+                    "\u0000\u008a\u0013\u0001\u0000\u0000\u0000\u008b\u0090\u0003\u0018\u000c\u0000" +
+                    "\u008c\u008d\u0005\u001d\u0000\u0000\u008d\u008f\u0003\u0018\u000c\u0000\u008e" +
+                    "\u008c\u0001\u0000\u0000\u0000\u008f\u0092\u0001\u0000\u0000\u0000\u0090" +
+                    "\u008e\u0001\u0000\u0000\u0000\u0090\u0091\u0001\u0000\u0000\u0000\u0091" +
+                    "\u0015\u0001\u0000\u0000\u0000\u0092\u0090\u0001\u0000\u0000\u0000\u0093" +
+                    "\u0094\u0003\u0018\u000c\u0000\u0094\u0095\u0005\u001e\u0000\u0000\u0095\u00ee" +
+                    "\u0001\u0000\u0000\u0000\u0096\u0097\u0005&\u0000\u0000\u0097\u0098\u0005" +
+                    "1\u0000\u0000\u0098\u0099\u0005 \u0000\u0000\u0099\u009a\u0003\u0018\u000c" +
+                    "\u0000\u009a\u009b\u0005\u001e\u0000\u0000\u009b\u00ee\u0001\u0000\u0000" +
+                    "\u0000\u009c\u009d\u0005*\u0000\u0000\u009d\u009e\u00051\u0000\u0000\u009e" +
+                    "\u009f\u0005 \u0000\u0000\u009f\u00a0\u0003\u0018\u000c\u0000\u00a0\u00a1" +
+                    "\u0005\u001e\u0000\u0000\u00a1\u00ee\u0001\u0000\u0000\u0000\u00a2\u00a3" +
+                    "\u00051\u0000\u0000\u00a3\u00a4\u0005 \u0000\u0000\u00a4\u00a5\u0003\u0018" +
+                    "\u000c\u0000\u00a5\u00a6\u0005\u001e\u0000\u0000\u00a6\u00ee\u0001\u0000\u0000" +
+                    "\u0000\u00a7\u00a8\u0005#\u0000\u0000\u00a8\u00a9\u0005\u0017\u0000\u0000" +
+                    "\u00a9\u00aa\u0003\u0018\u000c\u0000\u00aa\u00ab\u0005\u0018\u0000\u0000\u00ab" +
+                    "\u00af\u0005\u0019\u0000\u0000\u00ac\u00ae\u0003\u0016\u000b\u0000\u00ad" +
+                    "\u00ac\u0001\u0000\u0000\u0000\u00ae\u00b1\u0001\u0000\u0000\u0000\u00af" +
+                    "\u00ad\u0001\u0000\u0000\u0000\u00af\u00b0\u0001\u0000\u0000\u0000\u00b0" +
+                    "\u00b2\u0001\u0000\u0000\u0000\u00b1\u00af\u0001\u0000\u0000\u0000\u00b2" +
+                    "\u00b3\u0005\u001a\u0000\u0000\u00b3\u00ee\u0001\u0000\u0000\u0000\u00b4" +
+                    "\u00b5\u0005#\u0000\u0000\u00b5\u00b6\u0005\u0017\u0000\u0000\u00b6\u00b7" +
+                    "\u0003\u0018\u000c\u0000\u00b7\u00b8\u0005\u0018\u0000\u0000\u00b8\u00bc\u0005" +
+                    "\u0019\u0000\u0000\u00b9\u00bb\u0003\u0016\u000b\u0000\u00ba\u00b9\u0001" +
+                    "\u0000\u0000\u0000\u00bb\u00be\u0001\u0000\u0000\u0000\u00bc\u00ba\u0001" +
+                    "\u0000\u0000\u0000\u00bc\u00bd\u0001\u0000\u0000\u0000\u00bd\u00bf\u0001" +
+                    "\u0000\u0000\u0000\u00be\u00bc\u0001\u0000\u0000\u0000\u00bf\u00c0\u0005" +
+                    "\u001a\u0000\u0000\u00c0\u00c1\u0005\'\u0000\u0000\u00c1\u00c5\u0005\u0019" +
+                    "\u0000\u0000\u00c2\u00c4\u0003\u0016\u000b\u0000\u00c3\u00c2\u0001\u0000" +
+                    "\u0000\u0000\u00c4\u00c7\u0001\u0000\u0000\u0000\u00c5\u00c3\u0001\u0000" +
+                    "\u0000\u0000\u00c5\u00c6\u0001\u0000\u0000\u0000\u00c6\u00c8\u0001\u0000" +
+                    "\u0000\u0000\u00c7\u00c5\u0001\u0000\u0000\u0000\u00c8\u00c9\u0005\u001a" +
+                    "\u0000\u0000\u00c9\u00ee\u0001\u0000\u0000\u0000\u00ca\u00cb\u0005,\u0000" +
+                    "\u0000\u00cb\u00cc\u0005\u0017\u0000\u0000\u00cc\u00cd\u0003\u0018\u000c\u0000" +
+                    "\u00cd\u00ce\u0005\u0018\u0000\u0000\u00ce\u00d2\u0005\u0019\u0000\u0000" +
+                    "\u00cf\u00d1\u0003\u0016\u000b\u0000\u00d0\u00cf\u0001\u0000\u0000\u0000" +
+                    "\u00d1\u00d4\u0001\u0000\u0000\u0000\u00d2\u00d0\u0001\u0000\u0000\u0000" +
+                    "\u00d2\u00d3\u0001\u0000\u0000\u0000\u00d3\u00d5\u0001\u0000\u0000\u0000" +
+                    "\u00d4\u00d2\u0001\u0000\u0000\u0000\u00d5\u00d6\u0005\u001a\u0000\u0000" +
+                    "\u00d6\u00ee\u0001\u0000\u0000\u0000\u00d7\u00d8\u0005$\u0000\u0000\u00d8" +
+                    "\u00d9\u0005\u0017\u0000\u0000\u00d9\u00da\u00051\u0000\u0000\u00da\u00db" +
+                    "\u0005\"\u0000\u0000\u00db\u00dc\u0003\u0018\u000c\u0000\u00dc\u00dd\u0005" +
+                    "\u0018\u0000\u0000\u00dd\u00e1\u0005\u0019\u0000\u0000\u00de\u00e0\u0003" +
+                    "\u0016\u000b\u0000\u00df\u00de\u0001\u0000\u0000\u0000\u00e0\u00e3\u0001" +
+                    "\u0000\u0000\u0000\u00e1\u00df\u0001\u0000\u0000\u0000\u00e1\u00e2\u0001" +
+                    "\u0000\u0000\u0000\u00e2\u00e4\u0001\u0000\u0000\u0000\u00e3\u00e1\u0001" +
+                    "\u0000\u0000\u0000\u00e4\u00e5\u0005\u001a\u0000\u0000\u00e5\u00ee\u0001" +
+                    "\u0000\u0000\u0000\u00e6\u00e7\u0005)\u0000\u0000\u00e7\u00ee\u0005\u001e" +
+                    "\u0000\u0000\u00e8\u00ea\u0005-\u0000\u0000\u00e9\u00eb\u0003\u0018\u000c" +
+                    "\u0000\u00ea\u00e9\u0001\u0000\u0000\u0000\u00ea\u00eb\u0001\u0000\u0000" +
+                    "\u0000\u00eb\u00ec\u0001\u0000\u0000\u0000\u00ec\u00ee\u0005\u001e\u0000" +
+                    "\u0000\u00ed\u0093\u0001\u0000\u0000\u0000\u00ed\u0096\u0001\u0000\u0000" +
+                    "\u0000\u00ed\u009c\u0001\u0000\u0000\u0000\u00ed\u00a2\u0001\u0000\u0000" +
+                    "\u0000\u00ed\u00a7\u0001\u0000\u0000\u0000\u00ed\u00b4\u0001\u0000\u0000" +
+                    "\u0000\u00ed\u00ca\u0001\u0000\u0000\u0000\u00ed\u00d7\u0001\u0000\u0000" +
+                    "\u0000\u00ed\u00e6\u0001\u0000\u0000\u0000\u00ed\u00e8\u0001\u0000\u0000" +
+                    "\u0000\u00ee\u0017\u0001\u0000\u0000\u0000\u00ef\u00f0\u0006\u000c\uffff\uffff" +
+                    "\u0000\u00f0\u0104\u0003\u001a\r\u0000\u00f1\u0104\u00051\u0000\u0000" +
+                    "\u00f2\u00f4\u0005\u001b\u0000\u0000\u00f3\u00f5\u0003\u0014\n\u0000\u00f4" +
+                    "\u00f3\u0001\u0000\u0000\u0000\u00f4\u00f5\u0001\u0000\u0000\u0000\u00f5" +
+                    "\u00f6\u0001\u0000\u0000\u0000\u00f6\u0104\u0005\u001c\u0000\u0000\u00f7" +
+                    "\u00f8\u00051\u0000\u0000\u00f8\u00fa\u0005\u0017\u0000\u0000\u00f9\u00fb" +
+                    "\u0003\u0014\n\u0000\u00fa\u00f9\u0001\u0000\u0000\u0000\u00fa\u00fb\u0001" +
+                    "\u0000\u0000\u0000\u00fb\u00fc\u0001\u0000\u0000\u0000\u00fc\u0104\u0005" +
+                    "\u0018\u0000\u0000\u00fd\u00fe\u0005\u0017\u0000\u0000\u00fe\u00ff\u0003" +
+                    "\u0018\u000c\u0000\u00ff\u0100\u0005\u0018\u0000\u0000\u0100\u0104\u0001\u0000" +
+                    "\u0000\u0000\u0101\u0102\u0007\u0000\u0000\u0000\u0102\u0104\u0003\u0018" +
+                    "\u000c\b\u0103\u00ef\u0001\u0000\u0000\u0000\u0103\u00f1\u0001\u0000\u0000" +
+                    "\u0000\u0103\u00f2\u0001\u0000\u0000\u0000\u0103\u00f7\u0001\u0000\u0000" +
+                    "\u0000\u0103\u00fd\u0001\u0000\u0000\u0000\u0103\u0101\u0001\u0000\u0000" +
+                    "\u0000\u0104\u0138\u0001\u0000\u0000\u0000\u0105\u0106\n\u0007\u0000\u0000" +
+                    "\u0106\u0107\u0007\u0001\u0000\u0000\u0107\u0137\u0003\u0018\u000c\b\u0108" +
+                    "\u0109\n\u0006\u0000\u0000\u0109\u010a\u0007\u0002\u0000\u0000\u010a\u0137" +
+                    "\u0003\u0018\u000c\u0007\u010b\u010c\n\u0005\u0000\u0000\u010c\u010d\u0007" +
+                    "\u0003\u0000\u0000\u010d\u0137\u0003\u0018\u000c\u0006\u010e\u010f\n\u0004" +
+                    "\u0000\u0000\u010f\u0110\u0007\u0004\u0000\u0000\u0110\u0137\u0003\u0018" +
+                    "\u000c\u0005\u0111\u0112\n\u0003\u0000\u0000\u0112\u0113\u0005\u001f\u0000" +
+                    "\u0000\u0113\u0114\u0003\u0018\u000c\u0000\u0114\u0115\u0005\"\u0000\u0000" +
+                    "\u0115\u0116\u0003\u0018\u000c\u0004\u0116\u0137\u0001\u0000\u0000\u0000\u0117" +
+                    "\u0118\n\r\u0000\u0000\u0118\u0137\u0005.\u0000\u0000\u0119\u011a\n\u000c" +
+                    "\u0000\u0000\u011a\u0137\u0005/\u0000\u0000\u011b\u011c\n\u000b\u0000" +
+                    "\u0000\u011c\u011d\u0005\u001b\u0000\u0000\u011d\u011e\u0003\u0018\u000c\u0000" +
+                    "\u011e\u011f\u0005\u001c\u0000\u0000\u011f\u0137\u0001\u0000\u0000\u0000" +
+                    "\u0120\u0121\n\n\u0000\u0000\u0121\u0122\u0005!\u0000\u0000\u0122\u0137" +
+                    "\u00051\u0000\u0000\u0123\u0124\n\t\u0000\u0000\u0124\u0125\u0005!\u0000" +
+                    "\u0000\u0125\u0126\u00051\u0000\u0000\u0126\u0128\u0005\u0017\u0000\u0000" +
+                    "\u0127\u0129\u0003\u0014\n\u0000\u0128\u0127\u0001\u0000\u0000\u0000\u0128" +
+                    "\u0129\u0001\u0000\u0000\u0000\u0129\u012a\u0001\u0000\u0000\u0000\u012a" +
+                    "\u0137\u0005\u0018\u0000\u0000\u012b\u012c\n\u0002\u0000\u0000\u012c\u012d" +
+                    "\u0005\u0012\u0000\u0000\u012d\u012f\u0003\u0018\u000c\u0000\u012e\u0130\u0005" +
+                    "\u0013\u0000\u0000\u012f\u012e\u0001\u0000\u0000\u0000\u012f\u0130\u0001" +
+                    "\u0000\u0000\u0000\u0130\u0137\u0001\u0000\u0000\u0000\u0131\u0132\n\u0001" +
+                    "\u0000\u0000\u0132\u0133\u0005\u0012\u0000\u0000\u0133\u0134\u0003\u0018" +
+                    "\u000c\u0000\u0134\u0135\u0005\u0014\u0000\u0000\u0135\u0137\u0001\u0000\u0000" +
+                    "\u0000\u0136\u0105\u0001\u0000\u0000\u0000\u0136\u0108\u0001\u0000\u0000" +
+                    "\u0000\u0136\u010b\u0001\u0000\u0000\u0000\u0136\u010e\u0001\u0000\u0000" +
+                    "\u0000\u0136\u0111\u0001\u0000\u0000\u0000\u0136\u0117\u0001\u0000\u0000" +
+                    "\u0000\u0136\u0119\u0001\u0000\u0000\u0000\u0136\u011b\u0001\u0000\u0000" +
+                    "\u0000\u0136\u0120\u0001\u0000\u0000\u0000\u0136\u0123\u0001\u0000\u0000" +
+                    "\u0000\u0136\u012b\u0001\u0000\u0000\u0000\u0136\u0131\u0001\u0000\u0000" +
+                    "\u0000\u0137\u013a\u0001\u0000\u0000\u0000\u0138\u0136\u0001\u0000\u0000" +
+                    "\u0000\u0138\u0139\u0001\u0000\u0000\u0000\u0139\u0019\u0001\u0000\u0000" +
+                    "\u0000\u013a\u0138\u0001\u0000\u0000\u0000\u013b\u0144\u00054\u0000\u0000" +
+                    "\u013c\u0144\u00052\u0000\u0000\u013d\u0144\u00053\u0000\u0000\u013e\u0144" +
+                    "\u0005.\u0000\u0000\u013f\u0144\u0005(\u0000\u0000\u0140\u0144\u0005+" +
+                    "\u0000\u0000\u0141\u0144\u0005\u0015\u0000\u0000\u0142\u0144\u0005\u0016" +
+                    "\u0000\u0000\u0143\u013b\u0001\u0000\u0000\u0000\u0143\u013c\u0001\u0000" +
+                    "\u0000\u0000\u0143\u013d\u0001\u0000\u0000\u0000\u0143\u013e\u0001\u0000" +
+                    "\u0000\u0000\u0143\u013f\u0001\u0000\u0000\u0000\u0143\u0140\u0001\u0000" +
+                    "\u0000\u0000\u0143\u0141\u0001\u0000\u0000\u0000\u0143\u0142\u0001\u0000" +
+                    "\u0000\u0000\u0144\u001b\u0001\u0000\u0000\u0000\u001e +:@EKW[ekr\u0080" +
+                    "\u0086\u0089\u0090\u00af\u00bc\u00c5\u00d2\u00e1\u00ea\u00ed\u00f4\u00fa" +
+                    "\u0103\u0128\u012f\u0136\u0138\u0143"
         val _ATN = ATNDeserializer().deserialize(_serializedATN.toCharArray())
 
         init {

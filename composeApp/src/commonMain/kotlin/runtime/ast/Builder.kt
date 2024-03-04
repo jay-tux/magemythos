@@ -1,5 +1,6 @@
 package runtime.ast
 
+import ILogger
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.lazy.LazyColumn
@@ -7,6 +8,9 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import kotlinx.serialization.ExperimentalSerializationApi
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.decodeFromStream
 import org.antlr.v4.runtime.BaseErrorListener
 import org.antlr.v4.runtime.CharStreams
 import org.antlr.v4.runtime.CommonTokenStream
@@ -14,6 +18,11 @@ import org.antlr.v4.runtime.ParserRuleContext
 import org.antlr.v4.runtime.RecognitionException
 import org.antlr.v4.runtime.Recognizer
 import org.antlr.v4.runtime.Token
+import runtime.ICache
+import runtime.Runtime
+import runtime.Type.Companion.build
+import runtime.Variable.Companion.toVariable
+import runtime.ast.Currency.Companion.toCurrencyOrNull
 import runtime.ast.DiceValue.Companion.toDiceOrNull
 import runtime.ast.RollValue.Companion.toRollOrNull
 import runtime.parser.MMBaseVisitor
@@ -21,6 +30,7 @@ import runtime.parser.MMLexer
 import runtime.parser.MMParser
 import ui.indented
 import java.io.InputStream
+import java.util.Queue
 
 typealias Provider = (source: String, file: String) -> InputStream
 
@@ -39,35 +49,7 @@ class AntlrListener(val file: String) : BaseErrorListener() {
     }
 }
 
-class Ast(val source: String, val deps: Map<String, List<String>>, val content: List<Declaration>, pos: Pos) : Node(pos) {
-    @Composable
-    fun render() {
-        LazyColumn(Modifier.fillMaxSize()) {
-            item {
-                Text("File ${pos.file} (source $source)")
-            }
-            item {
-                indented(1) { Text("Dependencies:") }
-            }
-            items(deps.toList()) {
-                indented(2) {
-                    Text("From source ${it.first}: ${it.second.joinToString(", ")}")
-                }
-            }
-            item {
-                indented(1) { Text("Content (${content.size} declarations):") }
-            }
-
-            for(c in content) {
-                item {
-                    Column {
-                        c.show(this, 2)
-                    }
-                }
-            }
-        }
-    }
-}
+class Ast(val source: String, val deps: Map<String, List<String>>, val content: List<Declaration>, pos: Pos) : Node(pos)
 
 class HelperNodes {
     class ListNode<T : Node>(val values: List<T>, pos: Pos) : Node(pos)
@@ -145,6 +127,23 @@ class AstBuilder(private val sourceFile: String) : MMBaseVisitor<Node>() {
             body.filterIsInstance<FunDeclaration>(),
             c.toPos(sourceFile)
         )
+    }
+
+    override fun visitSimpleMultipleDecl(ctx: MMParser.SimpleMultipleDeclContext?): Node = nonNull(ctx) { c ->
+        val kind = nonNull(c.kind) { it.text }
+
+        HelperNodes.ListNode(nonNull(c.names) { l ->
+            visitRequire<HelperNodes.StringListNode>(l).values.map {
+                TypeDeclaration(
+                    kind,
+                    it,
+                    listOf(),
+                    listOf(),
+                    listOf(),
+                    l.toPos(sourceFile)
+                )
+            }
+        }, c.toPos(sourceFile))
     }
 
     override fun visitMultipleDecl(ctx: MMParser.MultipleDeclContext?): Node = nonNull(ctx) { c ->
@@ -232,6 +231,7 @@ class AstBuilder(private val sourceFile: String) : MMBaseVisitor<Node>() {
     }
     //endregion
 
+
     //region Statements
     override fun visitExprStmt(ctx: MMParser.ExprStmtContext?): Node = nonNull(ctx) { c ->
         ExprStmt(
@@ -316,7 +316,7 @@ class AstBuilder(private val sourceFile: String) : MMBaseVisitor<Node>() {
 
     //region Expressions
     override fun visitLiteralExpr(ctx: MMParser.LiteralExprContext?): Node = nonNull(ctx) { c ->
-        LiteralExpression(visitRequire<HelperNodes.ValueNode>(c.literal()).value, c.toPos(sourceFile))
+        LiteralExpression(fullVisit<HelperNodes.ValueNode>(c.literal()).value, c.toPos(sourceFile))
     }
 
     override fun visitNameExpr(ctx: MMParser.NameExprContext?): Node = nonNull(ctx) { c ->
@@ -440,13 +440,33 @@ class AstBuilder(private val sourceFile: String) : MMBaseVisitor<Node>() {
             c.toPos(sourceFile)
         )
     }
+
+    override fun visitCurrencyExpr(ctx: MMParser.CurrencyExprContext?): Node = nonNull(ctx) { c ->
+        MappedIntExpression(fullVisit(c.count), {
+            CurrencyValue(
+                it.value,
+                c.CURRENCY().text.toCurrencyOrNull() ?: throw LiteralError("currency", c.CURRENCY().text, c.toPos(sourceFile)),
+                c.toPos(sourceFile)
+            )
+        }, c.toPos(sourceFile))
+    }
+
+    override fun visitDiceExpr(ctx: MMParser.DiceExprContext?): Node = nonNull(ctx) { c ->
+        MappedIntExpression(fullVisit(c.count), {
+            RollValue(
+                it.value,
+                c.DICE().text.toDiceOrNull() ?: throw LiteralError("dice", c.DICE().text, c.toPos(sourceFile)),
+                c.toPos(sourceFile)
+            )
+        }, c.toPos(sourceFile))
+    }
     //endregion
 
     //region Literals
     override fun visitStringLiteral(ctx: MMParser.StringLiteralContext?): Node = nonNull(ctx) { c ->
         HelperNodes.ValueNode(
             StringValue(
-                nonNull(c.content) { it.text },
+                c.STRING().text.substring(1 until c.STRING().text.length - 1),
                 c.toPos(sourceFile)
             )
         )
@@ -479,16 +499,6 @@ class AstBuilder(private val sourceFile: String) : MMBaseVisitor<Node>() {
         )
     }
 
-    override fun visitCountDiceLiteral(ctx: MMParser.CountDiceLiteralContext?): Node = nonNull(ctx) { c ->
-        val literal = c.INT().text + c.DICE().text
-        HelperNodes.ValueNode(
-            RollValue(
-                literal.toRollOrNull() ?: throw LiteralError("roll value", literal, c.toPos(sourceFile)),
-                c.toPos(sourceFile)
-            )
-        )
-    }
-
     override fun visitTrueLiteral(ctx: MMParser.TrueLiteralContext?): Node = nonNull(ctx) { c ->
         HelperNodes.ValueNode(
             BoolValue(
@@ -503,6 +513,24 @@ class AstBuilder(private val sourceFile: String) : MMBaseVisitor<Node>() {
             BoolValue(
                 false,
                 c.toPos(sourceFile)
+            )
+        )
+    }
+
+    override fun visitInfIntLiteral(ctx: MMParser.InfIntLiteralContext?): Node = nonNull(ctx) {
+        HelperNodes.ValueNode(
+            IntValue(
+                Int.MAX_VALUE,
+                it.toPos(sourceFile)
+            )
+        )
+    }
+
+    override fun visitInfFloatLiteral(ctx: MMParser.InfFloatLiteralContext?): Node = nonNull(ctx) {
+        HelperNodes.ValueNode(
+            FloatValue(
+                Float.POSITIVE_INFINITY,
+                it.toPos(sourceFile)
             )
         )
     }
@@ -525,7 +553,7 @@ class AstBuilder(private val sourceFile: String) : MMBaseVisitor<Node>() {
     //endregion
 
     companion object {
-        fun loadSingle(source: String, file: String, provider: Provider): Ast {
+        private fun loadSingle(source: String, file: String, provider: Provider): Ast {
             val error = AntlrListener("$source($file)")
             val lexer = MMLexer(CharStreams.fromStream(provider(source, file)))
 //            lexer.removeErrorListeners()
@@ -537,12 +565,78 @@ class AstBuilder(private val sourceFile: String) : MMBaseVisitor<Node>() {
             parser.addErrorListener(error)
 
             val tree = parser.program()
-            val loader = AstBuilder(file)
+            val loader = AstBuilder("$source($file)")
 
             return loader.visitProgram(tree) as Ast
         }
 
-        // TODO: load recursive with dependencies
-        // TODO: after loading everything, finalize all types
+        fun loadWithDeps(source: String, file: String, provider: Provider) {
+            val output = Runtime.getCache()
+            val deps = mutableListOf<Pair<String, String>>()
+            val data: MutableMap<String, Declaration> = mutableMapOf()
+
+            val already = mutableSetOf<Pair<String, String>>()
+            deps.add(source to file)
+            while(deps.isNotEmpty()) {
+                val (src, f) = deps.removeFirst()
+                if(already.contains(src to f)) continue
+                already.add(src to f)
+
+                println(" -> Loading $f from $src")
+                val ast = loadSingle(src, f, provider)
+                ast.content.forEach {
+                    if(data.containsKey(it.name)) {
+                        throw RedeclarationError(it.name, data[it.name]!!.pos, it.pos)
+                    }
+                    else {
+                        data[it.name] = it
+                    }
+                }
+                ast.deps.forEach { (s, l) -> l.forEach { deps.add(s to it) } }
+            }
+
+            data.forEach { (_, v) ->
+                when(v) {
+                    is TypeDeclaration -> output.register(v.build())
+                    is FunDeclaration -> output.register(v)
+                    is GlobalDeclaration -> output.register(v.toVariable())
+                    else -> throw ArbitraryAstError("Invalid top-level declaration of type ${v::class.java.simpleName}.")
+                }
+            }
+
+            output.typeIterator().forEach { it.finalize() }
+        }
+
+        @OptIn(ExperimentalSerializationApi::class)
+        fun loadEntireCache(cacheDir: String, getStream: (String) -> InputStream) {
+            val output = Runtime.getCache()
+            val strm = getStream("$cacheDir/cache.json")
+            val map = Json.decodeFromStream<Map<String, List<String>>>(strm)
+            val parsed = mutableMapOf<String, Declaration>()
+            map.forEach { (src, files) ->
+                files.forEach { file ->
+                    val ast = loadSingle(src, file) { src, f -> getStream("$cacheDir/$src/$f.mm") }
+                    ast.content.forEach {
+                        if(parsed.containsKey(it.name)) {
+                            throw RedeclarationError(it.name, parsed[it.name]!!.pos, it.pos)
+                        }
+                        else {
+                            parsed[it.name] = it
+                        }
+                    }
+                }
+            }
+
+            parsed.forEach { (_, v) ->
+                when(v) {
+                    is TypeDeclaration -> output.register(v.build())
+                    is FunDeclaration -> output.register(v)
+                    is GlobalDeclaration -> output.register(v.toVariable())
+                    else -> throw ArbitraryAstError("Invalid top-level declaration of type ${v::class.java.simpleName}.")
+                }
+            }
+
+            output.typeIterator().forEach { it.finalize() }
+        }
     }
 }

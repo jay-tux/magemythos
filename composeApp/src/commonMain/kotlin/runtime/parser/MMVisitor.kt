@@ -56,6 +56,14 @@ interface MMVisitor<T> : ParseTreeVisitor<T> {
     fun visitFullDecl(ctx: MMParser.FullDeclContext?): T
 
     /**
+     * Visit a parse tree produced by the `simpleMultipleDecl`
+     * labeled alternative in [MMParser.declaration].
+     * @param ctx the parse tree
+     * @return the visitor result
+     */
+    fun visitSimpleMultipleDecl(ctx: MMParser.SimpleMultipleDeclContext?): T
+
+    /**
      * Visit a parse tree produced by the `multipleDecl`
      * labeled alternative in [MMParser.declaration].
      * @param ctx the parse tree
@@ -236,6 +244,14 @@ interface MMVisitor<T> : ParseTreeVisitor<T> {
     fun visitMemberCallExpr(ctx: MMParser.MemberCallExprContext?): T
 
     /**
+     * Visit a parse tree produced by the `currencyExpr`
+     * labeled alternative in [MMParser.expr].
+     * @param ctx the parse tree
+     * @return the visitor result
+     */
+    fun visitCurrencyExpr(ctx: MMParser.CurrencyExprContext?): T
+
+    /**
      * Visit a parse tree produced by the `memberExpr`
      * labeled alternative in [MMParser.expr].
      * @param ctx the parse tree
@@ -324,6 +340,14 @@ interface MMVisitor<T> : ParseTreeVisitor<T> {
     fun visitMulExpr(ctx: MMParser.MulExprContext?): T
 
     /**
+     * Visit a parse tree produced by the `diceExpr`
+     * labeled alternative in [MMParser.expr].
+     * @param ctx the parse tree
+     * @return the visitor result
+     */
+    fun visitDiceExpr(ctx: MMParser.DiceExprContext?): T
+
+    /**
      * Visit a parse tree produced by the `callExpr`
      * labeled alternative in [MMParser.expr].
      * @param ctx the parse tree
@@ -388,14 +412,6 @@ interface MMVisitor<T> : ParseTreeVisitor<T> {
     fun visitDiceLiteral(ctx: MMParser.DiceLiteralContext?): T
 
     /**
-     * Visit a parse tree produced by the `countDiceLiteral`
-     * labeled alternative in [MMParser.literal].
-     * @param ctx the parse tree
-     * @return the visitor result
-     */
-    fun visitCountDiceLiteral(ctx: MMParser.CountDiceLiteralContext?): T
-
-    /**
      * Visit a parse tree produced by the `trueLiteral`
      * labeled alternative in [MMParser.literal].
      * @param ctx the parse tree
@@ -410,4 +426,20 @@ interface MMVisitor<T> : ParseTreeVisitor<T> {
      * @return the visitor result
      */
     fun visitFalseLiteral(ctx: MMParser.FalseLiteralContext?): T
+
+    /**
+     * Visit a parse tree produced by the `infIntLiteral`
+     * labeled alternative in [MMParser.literal].
+     * @param ctx the parse tree
+     * @return the visitor result
+     */
+    fun visitInfIntLiteral(ctx: MMParser.InfIntLiteralContext?): T
+
+    /**
+     * Visit a parse tree produced by the `infFloatLiteral`
+     * labeled alternative in [MMParser.literal].
+     * @param ctx the parse tree
+     * @return the visitor result
+     */
+    fun visitInfFloatLiteral(ctx: MMParser.InfFloatLiteralContext?): T
 }

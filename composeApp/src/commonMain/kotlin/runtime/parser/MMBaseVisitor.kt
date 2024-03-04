@@ -85,6 +85,17 @@ open class MMBaseVisitor<T> : AbstractParseTreeVisitor<T>(), MMVisitor<T> {
      * The default implementation returns the result of calling
      * [.visitChildren] on `ctx`.
      */
+    override fun visitSimpleMultipleDecl(ctx: MMParser.SimpleMultipleDeclContext?): T {
+        return visitChildren(ctx)
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     *
+     * The default implementation returns the result of calling
+     * [.visitChildren] on `ctx`.
+     */
     override fun visitMultipleDecl(ctx: MMParser.MultipleDeclContext?): T {
         return visitChildren(ctx)
     }
@@ -338,6 +349,17 @@ open class MMBaseVisitor<T> : AbstractParseTreeVisitor<T>(), MMVisitor<T> {
      * The default implementation returns the result of calling
      * [.visitChildren] on `ctx`.
      */
+    override fun visitCurrencyExpr(ctx: MMParser.CurrencyExprContext?): T {
+        return visitChildren(ctx)
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     *
+     * The default implementation returns the result of calling
+     * [.visitChildren] on `ctx`.
+     */
     override fun visitMemberExpr(ctx: MMParser.MemberExprContext?): T {
         return visitChildren(ctx)
     }
@@ -459,6 +481,17 @@ open class MMBaseVisitor<T> : AbstractParseTreeVisitor<T>(), MMVisitor<T> {
      * The default implementation returns the result of calling
      * [.visitChildren] on `ctx`.
      */
+    override fun visitDiceExpr(ctx: MMParser.DiceExprContext?): T {
+        return visitChildren(ctx)
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     *
+     * The default implementation returns the result of calling
+     * [.visitChildren] on `ctx`.
+     */
     override fun visitCallExpr(ctx: MMParser.CallExprContext?): T {
         return visitChildren(ctx)
     }
@@ -547,17 +580,6 @@ open class MMBaseVisitor<T> : AbstractParseTreeVisitor<T>(), MMVisitor<T> {
      * The default implementation returns the result of calling
      * [.visitChildren] on `ctx`.
      */
-    override fun visitCountDiceLiteral(ctx: MMParser.CountDiceLiteralContext?): T {
-        return visitChildren(ctx)
-    }
-
-    /**
-     * {@inheritDoc}
-     *
-     *
-     * The default implementation returns the result of calling
-     * [.visitChildren] on `ctx`.
-     */
     override fun visitTrueLiteral(ctx: MMParser.TrueLiteralContext?): T {
         return visitChildren(ctx)
     }
@@ -570,6 +592,28 @@ open class MMBaseVisitor<T> : AbstractParseTreeVisitor<T>(), MMVisitor<T> {
      * [.visitChildren] on `ctx`.
      */
     override fun visitFalseLiteral(ctx: MMParser.FalseLiteralContext?): T {
+        return visitChildren(ctx)
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     *
+     * The default implementation returns the result of calling
+     * [.visitChildren] on `ctx`.
+     */
+    override fun visitInfIntLiteral(ctx: MMParser.InfIntLiteralContext?): T {
+        return visitChildren(ctx)
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     *
+     * The default implementation returns the result of calling
+     * [.visitChildren] on `ctx`.
+     */
+    override fun visitInfFloatLiteral(ctx: MMParser.InfFloatLiteralContext?): T {
         return visitChildren(ctx)
     }
 }

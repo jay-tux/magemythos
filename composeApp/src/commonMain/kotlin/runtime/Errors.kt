@@ -1,14 +1,15 @@
 package runtime
 
 import runtime.ast.Pos
+import runtime.ast.Value
 
 sealed class RuntimeError(message: String) : Exception(message)
 
 class VariableError(name: String, pos: Pos) :
         RuntimeError("Variable '$name' not found at $pos")
 
-class TypeError(expected: String, actual: Class<*>, pos: Pos) :
-        RuntimeError("Type error: expected $expected, got ${actual.simpleName} at $pos")
+class TypeError(expected: String, actual: Value, pos: Pos) :
+        RuntimeError("Type error: expected $expected, got ${actual.typeName()} at $pos")
 
 class RuntimeInternalError(message: String) :
         RuntimeError("Internal error: $message")
@@ -39,6 +40,9 @@ class ArgumentCountError(name: String, got: Int, required: Int, pos: Pos) :
 
 class ScopeException(call: String, pos: Pos) :
         RuntimeError("Library function $call requires a character scope, none available at $pos")
+
+class ConversionError(from: String, to: String, pos: Pos) :
+        RuntimeError("Cannot convert from $from to $to at $pos")
 
 class ChoiceException(required: Int, got: Int, pos: Pos) :
         RuntimeError("Impossible choice at $pos: user should choose $required options, but only $got are given")

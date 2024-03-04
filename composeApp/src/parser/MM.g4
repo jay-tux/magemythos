@@ -26,10 +26,13 @@ WHILE: 'while';
 RETURN: 'return';
 
 DICE: 'd4' | 'd6' | 'd8' | 'd10' | 'd12' | 'd20' | 'd100';
+CURRENCY: 'pp' | 'gp' | 'sp' | 'cp';
 TAGNAME: '@'[a-zA-Z][a-zA-Z0-9_]*;
 ID: [a-zA-Z_][a-zA-Z0-9_]*;
 INT: [0-9]+;
 FLOAT: [0-9]*'.'[0-9]+;
+
+STRING: '"' ~('"')* '"';
 
 COMMENT: '//' ~[\r\n]* -> skip;
 WS: [ \t\r\n]+ -> skip;
@@ -45,6 +48,7 @@ idList: ids+=ID (COMMA ids+=ID)*;
 declaration:
     kind=ID name=ID tags=tagList?                         #simpleDecl
   | kind=ID name=ID tags=tagList? BO body+=bodyDecl* BC   #fullDecl
+  | kind=ID names=idList                                  #simpleMultipleDecl
   | kind=ID PO names=idList PC 'all' tags=tagList?        #multipleDecl
   | funDecl                                               #function
   | globalDecl                                            #global;
@@ -85,6 +89,8 @@ expr:
   | BRO exprs=exprList? BRC                               #listExpr
   | ID PO args=exprList? PC                               #callExpr
   | PO e=expr PC                                          #parenExpr
+  | count=expr DICE                                       #diceExpr
+  | count=expr CURRENCY                                   #currencyExpr
   | base=expr BRO index=expr BRC                          #indexExpr
   | base=expr DOT name=ID                                 #memberExpr
   | base=expr DOT name=ID PO args=exprList? PC            #memberCallExpr
@@ -99,10 +105,11 @@ expr:
   | begin=expr 'to' end=expr 'inclusive'                  #rangeInclusiveExpr;
 
 literal:
-    '"' content=~'"'* '"'                                 #stringLiteral
+    STRING                                                #stringLiteral
   | INT                                                   #intLiteral
   | FLOAT                                                 #floatLiteral
   | DICE                                                  #diceLiteral
-  | INT DICE                                              #countDiceLiteral
   | TRUE                                                  #trueLiteral
-  | FALSE                                                 #falseLiteral;
+  | FALSE                                                 #falseLiteral
+  | 'INF'                                                 #infIntLiteral
+  | 'INFF'                                                #infFloatLiteral;

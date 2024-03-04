@@ -72,11 +72,11 @@ enum class BinaryOperator {
                 is FloatValue -> when(right) {
                     is IntValue -> FloatValue(left.value * right.value.toFloat(), at)
                     is FloatValue -> FloatValue(left.value * right.value, at)
-                    else -> throw TypeError("int or float", right::class.java, right.pos)
+                    else -> throw TypeError("int or float", right, right.pos)
                 }
                 else -> {
                     if(right is IntValue) ListValue(List(right.value) { left }, at)
-                    else throw TypeError("int", right::class.java, left.pos)
+                    else throw TypeError("int", right, left.pos)
                 }
             }
         }
@@ -146,165 +146,17 @@ enum class BinaryOperator {
     }
 }
 
-sealed class Expression(pos: Pos) : Node(pos) {
-    @Composable
-    abstract fun ColumnScope.render(indent: Int)
-
-    @Composable
-    fun show(scope: ColumnScope, indent: Int = 0) {
-        scope.render(indent)
-    }
-}
-
+sealed class Expression(pos: Pos) : Node(pos)
 sealed class RecursiveExpression(pos: Pos) : Expression(pos)
-
-class LiteralExpression(val value: Value, pos: Pos): Expression(pos) {
-    @Composable
-    override fun ColumnScope.render(indent: Int) = indented(indent) {
-        Text(value.toString())
-    }
-}
-
-class VariableExpression(val name: String, pos: Pos): Expression(pos) {
-    @Composable
-    override fun ColumnScope.render(indent: Int) = indented(indent) {
-        Text(name)
-    }
-}
-
-class ListExpression(val values: List<Expression>, pos: Pos): RecursiveExpression(pos) {
-    @Composable
-    override fun ColumnScope.render(indent: Int) {
-        var showValues by remember { mutableStateOf(false) }
-        indentedOpenClose(indent, showValues, { showValues = it }) {
-            Text("List expression")
-        }
-        if (showValues) {
-            values.forEach { it.show(this@render, indent + 1) }
-        }
-    }
-}
-
-class CallExpression(val name: String, val args: List<Expression>, pos: Pos): Expression(pos) {
-    @Composable
-    override fun ColumnScope.render(indent: Int) {
-        var showValues by remember { mutableStateOf(false) }
-        indentedOpenClose(indent, showValues, { showValues = it }) {
-            Text("Call $name")
-        }
-
-        if (showValues) {
-            args.forEach { it.show(this@render, indent + 1) }
-        }
-    }
-}
-
-class UnaryExpression(val op: UnaryOperator, val target: Expression, pos: Pos): Expression(pos) {
-    @Composable
-    override fun ColumnScope.render(indent: Int) {
-        var showTarget by remember { mutableStateOf(false) }
-        indentedOpenClose(indent, showTarget, { showTarget = it }) {
-            Text("${op.repr()} operator")
-        }
-
-        if (showTarget) {
-            target.show(this@render, indent + 1)
-        }
-    }
-}
-
-class BinaryExpression(val op: BinaryOperator, val left: Expression, val right: Expression, pos: Pos): Expression(pos) {
-    @Composable
-    override fun ColumnScope.render(indent: Int) {
-        var showArgs by remember { mutableStateOf(false) }
-        indentedOpenClose(indent, showArgs, { showArgs = it }) {
-            Text("${op.repr()} operator")
-        }
-
-        if (showArgs) {
-            left.show(this@render, indent + 1)
-            right.show(this@render, indent + 1)
-        }
-    }
-}
-
-class TernaryExpression(val cond: Expression, val bTrue: Expression, val bFalse: Expression, pos: Pos): Expression(pos) {
-    @Composable
-    override fun ColumnScope.render(indent: Int) {
-        var showArgs by remember { mutableStateOf(false) }
-        indentedOpenClose(indent, showArgs, { showArgs = it }) {
-            Text("Ternary operator")
-        }
-
-        if (showArgs) {
-            cond.show(this@render, indent + 1)
-            bTrue.show(this@render, indent + 1)
-            bFalse.show(this@render, indent + 1)
-        }
-    }
-}
-
-class IndexExpression(val target: Expression, val index: Expression, pos: Pos): Expression(pos) {
-    @Composable
-    override fun ColumnScope.render(indent: Int) {
-        var showArgs by remember { mutableStateOf(false) }
-        indentedOpenClose(indent, showArgs, { showArgs = it }) {
-            Text("Index operator")
-        }
-
-        if (showArgs) {
-            target.show(this@render, indent + 1)
-            index.show(this@render, indent + 1)
-        }
-    }
-}
-
-class MemberExpression(val target: Expression, val member: String, pos: Pos): Expression(pos) {
-    @Composable
-    override fun ColumnScope.render(indent: Int) {
-        var showArgs by remember { mutableStateOf(false) }
-        indentedOpenClose(indent, showArgs, { showArgs = it }) {
-            Text("Member operator")
-        }
-
-        if (showArgs) {
-            target.show(this@render, indent + 1)
-            indented(indent + 1) {
-                Text(member)
-            }
-        }
-    }
-}
-
-class MemberCallExpression(val target: Expression, val member: String, val args: List<Expression>, pos: Pos): Expression(pos) {
-    @Composable
-    override fun ColumnScope.render(indent: Int) {
-        var showArgs by remember { mutableStateOf(false) }
-        indentedOpenClose(indent, showArgs, { showArgs = it }) {
-            Text("Member call $member")
-        }
-
-        if (showArgs) {
-            target.show(this@render, indent + 1)
-            indented(indent + 1) {
-                Text(member)
-            }
-            args.forEach { it.show(this@render, indent + 1) }
-        }
-    }
-}
-
-class RangeExpression(val start: Expression, val end: Expression, val inclusive: Boolean, pos: Pos): Expression(pos) {
-    @Composable
-    override fun ColumnScope.render(indent: Int) {
-        var showArgs by remember { mutableStateOf(false) }
-        indentedOpenClose(indent, showArgs, { showArgs = it }) {
-            Text("${if(inclusive) "Inclusive" else "Exclusive"} range expression")
-        }
-
-        if (showArgs) {
-            start.show(this@render, indent + 1)
-            end.show(this@render, indent + 1)
-        }
-    }
-}
+class LiteralExpression(val value: Value, pos: Pos): Expression(pos)
+class VariableExpression(val name: String, pos: Pos): Expression(pos)
+class ListExpression(val values: List<Expression>, pos: Pos): RecursiveExpression(pos)
+class CallExpression(val name: String, val args: List<Expression>, pos: Pos): Expression(pos)
+class UnaryExpression(val op: UnaryOperator, val target: Expression, pos: Pos): Expression(pos)
+class BinaryExpression(val op: BinaryOperator, val left: Expression, val right: Expression, pos: Pos): Expression(pos)
+class TernaryExpression(val cond: Expression, val bTrue: Expression, val bFalse: Expression, pos: Pos): Expression(pos)
+class IndexExpression(val target: Expression, val index: Expression, pos: Pos): Expression(pos)
+class MemberExpression(val target: Expression, val member: String, pos: Pos): Expression(pos)
+class MemberCallExpression(val target: Expression, val member: String, val args: List<Expression>, pos: Pos): Expression(pos)
+class RangeExpression(val start: Expression, val end: Expression, val inclusive: Boolean, pos: Pos): Expression(pos)
+class MappedIntExpression(val target: Expression, val map: (IntValue) -> Value, pos: Pos) : Expression(pos)

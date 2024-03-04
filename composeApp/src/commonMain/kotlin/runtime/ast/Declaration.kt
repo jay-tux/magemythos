@@ -7,128 +7,28 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import immutable
 import ui.indented
 import ui.indentedOpenClose
 
-sealed class Declaration(pos: Pos) : Node(pos) {
-    @Composable
-    abstract fun ColumnScope.render(indent: Int)
-
-    @Composable
-    fun show(scope: ColumnScope, indent: Int) {
-        scope.render(indent)
-    }
-}
-
-sealed class BodyDeclaration(pos: Pos) : Declaration(pos)
-
+sealed class Declaration(val name: String, pos: Pos) : Node(pos)
+sealed class BodyDeclaration(name: String, pos: Pos) : Declaration(name, pos)
 class TypeDeclaration(
-    val kind: String, val name: String, val tags: List<Tag>, val fields: List<MemberDeclaration>,
+    val kind: String, name: String, val tags: List<Tag>, val fields: List<MemberDeclaration>,
     val members: List<FunDeclaration>, pos: Pos
-) : Declaration(pos)
-{
-    fun finalize() {
-        tags.forEach { TagEffect.applyTag(this, it.name, it.arguments, it.pos) }
-    }
-
-    @Composable
-    override fun ColumnScope.render(indent: Int) {
-        var isOpen by remember { mutableStateOf(false) }
-        var tagsOpen by remember { mutableStateOf(false) }
-        var fieldsOpen by remember { mutableStateOf(false) }
-        var membersOpen by remember { mutableStateOf(false) }
-
-        indentedOpenClose(indent, isOpen, { isOpen = it }) {
-            Text("$kind $name")
-        }
-
-        if (isOpen) {
-            indentedOpenClose(indent + 1, tagsOpen, { tagsOpen = it }) {
-                Text("Tags (${tags.size})")
-            }
-
-            if (tagsOpen) {
-                tags.forEach { it.render(this@render, indent + 2) }
-            }
-
-            indentedOpenClose(indent + 1, fieldsOpen, { fieldsOpen = it }) {
-                Text("Fields (${fields.size})")
-            }
-
-            if (fieldsOpen) {
-                fields.forEach { it.show(this@render, indent + 2) }
-            }
-
-            indentedOpenClose(indent + 1, membersOpen, { membersOpen = it }) {
-                Text("Members (${members.size})")
-            }
-
-            if (membersOpen) {
-                members.forEach { it.show(this@render, indent + 2) }
-            }
-        }
-    }
-}
+) : Declaration(name, pos)
 
 class FunDeclaration(
-    val name: String, val params: List<String>, val body: List<Statement>, pos: Pos
-) : BodyDeclaration(pos)
+    name: String, val params: List<String>, body: List<Statement>, pos: Pos
+) : BodyDeclaration(name, pos)
 {
-    @Composable
-    override fun ColumnScope.render(indent: Int) {
-        var isOpen by remember { mutableStateOf(false) }
-        var bodyOpen by remember { mutableStateOf(false) }
+    private val _body: MutableList<Statement> = body.toMutableList()
+    val body = _body.immutable()
 
-        indentedOpenClose(indent, isOpen, { isOpen = it }) {
-            Text("Fun $name")
-        }
-
-        if (isOpen) {
-            indented(indent + 1) {
-                Text("Parameters (${params.size}): ${params.joinToString(", ")}")
-            }
-
-            indentedOpenClose(indent + 1, bodyOpen, { bodyOpen = it }) {
-                Text("Body")
-            }
-
-            if (bodyOpen) {
-                body.forEach { it.show(this@render, indent + 2) }
-            }
-        }
-    }
+    fun growBody(stmts: List<Statement>): Unit = _body.addAll(stmts).let{}
 }
 
-class Tag(val name: String, val arguments: List<Expression>, pos: Pos) : Node(pos) {
-    @Composable
-    fun render(scope: ColumnScope, indent: Int) {
-        scope.run {
-            indented(indent) {
-                Text("Tag $name")
-            }
-            arguments.forEach { it.show(this, indent + 1) }
-        }
-    }
-}
-
-class GlobalDeclaration(val name: String, val value: Expression, pos: Pos) : Declaration(pos) {
-    @Composable
-    override fun ColumnScope.render(indent: Int) {
-        indented(indent) {
-            Text("Global constant $name")
-        }
-        value.show(this@render, indent + 1)
-    }
-
-}
-
-class MemberDeclaration(val name: String, val value: Expression, val isConst: Boolean, pos: Pos) :
-    BodyDeclaration(pos) {
-    @Composable
-    override fun ColumnScope.render(indent: Int) {
-        indented(indent) {
-            Text("Member ${if (isConst) "constant" else "field"} $name")
-        }
-        value.show(this@render, indent + 1)
-    }
-}
+class Tag(val name: String, val arguments: List<Expression>, pos: Pos) : Node(pos)
+class GlobalDeclaration(name: String, val value: Expression, pos: Pos) : Declaration(name, pos)
+class MemberDeclaration(name: String, val value: Expression, val isConst: Boolean, pos: Pos) :
+    BodyDeclaration(name, pos)
