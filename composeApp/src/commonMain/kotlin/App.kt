@@ -23,82 +23,9 @@ import runtime.RuntimeError
 import runtime.ast.Ast
 import runtime.ast.AstBuilder
 import runtime.ast.AstError
+import runtime.ast.Provider
+import runtime.ast.Streams
 import java.io.File
-
-@Composable
-fun loader(local: LocalStorage) {
-    var dialog by remember { mutableStateOf(false) }
-    var path by remember { mutableStateOf("") }
-
-    val runLoad = {
-        val base = path.split('/').dropLast(2).joinToString("/")
-        try {
-            AstBuilder.loadWithDeps(
-                source = path.split('/').dropLast(1).last(),
-                file = path.split('/').last().split('.')[0]
-            ) { src, file ->
-                Runtime.getLogger().logMessage("[Provider]: $src($file) -> $base/$src/$file.mm")
-                File("$base/$src/$file.mm").inputStream()
-            }
-        }
-        catch (e: Exception) {
-            Runtime.getLogger().logError((e.message ?: "Unknown error") + "\n" + e.stackTraceToString())
-        }
-    }
-
-    Button({ dialog = true }) {
-        Text("Load")
-    }
-
-    FilePicker(dialog, initialDirectory = local.lastLoaded(), fileExtensions = listOf("mm")) {
-        dialog = false
-        it?.let {
-            local.onLoad(it.path)
-            path = it.path
-            runLoad()
-        }
-    }
-}
-
-@Composable
-fun cacheLoader(local: LocalStorage, ) {
-    var dialog by remember { mutableStateOf(false) }
-    val scope = rememberCoroutineScope()
-
-    val actualLoad = { it: String ->
-        try {
-            AstBuilder.loadEntireCache(it) { pth ->
-                Runtime.getLogger().logMessage("[CacheLoad]: Loading $pth")
-                File(pth).inputStream()
-            }
-        }
-        catch (e: Exception) {
-            Runtime.getLogger().logError((e.message ?: "Unknown error") + "\n" + e.stackTraceToString())
-        }
-    }
-
-    val onClick = {
-        scope.launch {
-            local.selectedCacheDir()?.let {
-                actualLoad(it)
-            } ?: run {
-                dialog = true
-            }
-        }.let {}
-    }
-
-    Button(onClick) {
-        Text("Load Entire Cache")
-    }
-
-    DirectoryPicker(dialog, initialDirectory = local.lastLoaded()) {
-        dialog = false
-        it?.let {
-            local.onSetCacheDir(it)
-            actualLoad(it)
-        }
-    }
-}
 
 @Composable
 fun App(local: LocalStorage, cache: ICache, logger: ILogger) {
@@ -116,7 +43,10 @@ fun App(local: LocalStorage, cache: ICache, logger: ILogger) {
                     file = path.split('/').last().split('.')[0]
                 ) { src, file ->
                     println("[Provider]: $src($file) -> $base/$src/$file.mm")
-                    File("$base/$src/$file.mm").inputStream()
+                    Streams(
+                        File("$base/$src/$file.mm").inputStream(),
+                        File("$base/$src/$file.mmstr").inputStream()
+                    )
                 }
             }
             catch (e: Exception) {

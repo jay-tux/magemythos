@@ -56,7 +56,8 @@ class TagEffect(private val name: String, private val argCount: Int, private val
             )
         }
 
-        val noDesc = TagEffect("@noDesc", 0) { scope, _, _ ->
+        val noDesc = TagEffect("@noDesc", 0) { scope, _, at ->
+            if(scope.hasDesc()) Runtime.getLogger().logWarning("@noDesc is ignored on a type with a description (used at $at).")
             scope.changeDesc("")
         }
 
@@ -247,6 +248,7 @@ class TagEffect(private val name: String, private val argCount: Int, private val
 
         val inheritDesc = TagEffect("@inheritDesc", 0) { scope, _, at ->
             scope.requireScope<Item.ItemScope>(this, at).let {
+                if(it.hasDesc()) Runtime.getLogger().logWarning("@inheritDesc is ignored on an Item with a description (used at $at).")
                 it.tags().let { tags ->
                     if(tags.size != 1) throw ArbitraryAstError("@inheritDesc tag is only allowed on an Item with exactly one @tag tag.")
                     else it.changeDesc(tags[0].description)
@@ -279,6 +281,7 @@ class TagEffect(private val name: String, private val argCount: Int, private val
         }
 
         val descLevelDep = TagEffect("@descLevelDep", 1) { scope, args, at ->
+            scope.changeDesc("") // guarantee to the system that a description will be available later
             scope.appendOrCreateMember("onLevelUp", listOf(
                 ExprStmt(
                     CallExpression(

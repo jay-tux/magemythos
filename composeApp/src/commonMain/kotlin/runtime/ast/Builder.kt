@@ -32,7 +32,8 @@ import ui.indented
 import java.io.InputStream
 import java.util.Queue
 
-typealias Provider = (source: String, file: String) -> InputStream
+data class Streams(val source: InputStream, val description: InputStream)
+typealias Provider = (source: String, file: String) -> Streams
 
 fun ParserRuleContext.toPos(file: String): Pos = Pos(file, start.line, start.charPositionInLine)
 fun Token.toPos(file: String): Pos = Pos(file, line, charPositionInLine)
@@ -553,21 +554,41 @@ class AstBuilder(private val sourceFile: String) : MMBaseVisitor<Node>() {
     //endregion
 
     companion object {
-        private fun loadSingle(source: String, file: String, provider: Provider): Ast {
+        private fun loadSingle(source: String, file: String, provider: Provider): Map<String, Declaration> {
             val error = AntlrListener("$source($file)")
-            val lexer = MMLexer(CharStreams.fromStream(provider(source, file)))
-//            lexer.removeErrorListeners()
+            val inputs = provider(source, file)
+            val lexer = MMLexer(CharStreams.fromStream(inputs.source))
             lexer.addErrorListener(error)
 
             val tokens = CommonTokenStream(lexer)
             val parser = MMParser(tokens)
-//            parser.removeErrorListeners()
             parser.addErrorListener(error)
 
             val tree = parser.program()
             val loader = AstBuilder("$source($file)")
 
-            return loader.visitProgram(tree) as Ast
+            val ast = loader.visitProgram(tree) as Ast
+            val declarations = mutableMapOf<String, Declaration>()
+            ast.content.forEach {
+                if(declarations.containsKey(it.name)) {
+                    throw RedeclarationError(it.name, declarations[it.name]!!.pos, it.pos)
+                }
+                else {
+                    declarations[it.name] = it
+                }
+            }
+
+            val descs = DescriptionLoader(inputs.description.bufferedReader().use { it.readText() }, "$source($file)::descriptions").parse()
+            descs.forEach { (n, d) ->
+                declarations[n]?.let {
+                    if(it is TypeDeclaration) it.description = d
+                    else {
+                        Runtime.getLogger().logWarning("Description provided for $n (declared at ${it.pos}), but it is not a type declaration (perhaps you made a typo?)")
+                    }
+                } ?: Runtime.getLogger().logWarning("Description provided for $n, but no such declaration exists (perhaps you made a typo or it is declared in another file?)")
+            }
+
+            return declarations
         }
 
         fun loadWithDeps(source: String, file: String, provider: Provider) {
@@ -583,16 +604,14 @@ class AstBuilder(private val sourceFile: String) : MMBaseVisitor<Node>() {
                 already.add(src to f)
 
                 println(" -> Loading $f from $src")
-                val ast = loadSingle(src, f, provider)
-                ast.content.forEach {
-                    if(data.containsKey(it.name)) {
-                        throw RedeclarationError(it.name, data[it.name]!!.pos, it.pos)
+                loadSingle(src, f, provider).forEach { (name, decl) ->
+                    if(data.containsKey(name)) {
+                        throw RedeclarationError(name, data[name]!!.pos, decl.pos)
                     }
                     else {
-                        data[it.name] = it
+                        data[name] = decl
                     }
                 }
-                ast.deps.forEach { (s, l) -> l.forEach { deps.add(s to it) } }
             }
 
             data.forEach { (_, v) ->
@@ -615,13 +634,14 @@ class AstBuilder(private val sourceFile: String) : MMBaseVisitor<Node>() {
             val parsed = mutableMapOf<String, Declaration>()
             map.forEach { (src, files) ->
                 files.forEach { file ->
-                    val ast = loadSingle(src, file) { src, f -> getStream("$cacheDir/$src/$f.mm") }
-                    ast.content.forEach {
-                        if(parsed.containsKey(it.name)) {
-                            throw RedeclarationError(it.name, parsed[it.name]!!.pos, it.pos)
+                    loadSingle(src, file) { src, f ->
+                        Streams(getStream("$cacheDir/$src/$f.mm"), getStream("$cacheDir/$src/$f.mmstr"))
+                    }.forEach { (name, decl) ->
+                        if(parsed.containsKey(name)) {
+                            throw RedeclarationError(name, parsed[name]!!.pos, decl.pos)
                         }
                         else {
-                            parsed[it.name] = it
+                            parsed[name] = decl
                         }
                     }
                 }

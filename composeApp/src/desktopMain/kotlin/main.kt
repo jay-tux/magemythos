@@ -30,6 +30,8 @@ import kotlinx.coroutines.launch
 import runtime.Runtime
 import ui.CharacterCreationDialog
 import ui.Console
+import ui.cacheLoader
+import ui.loader
 import ui.theme.MageMythosTheme
 
 enum class BottomTab(val show: String) {

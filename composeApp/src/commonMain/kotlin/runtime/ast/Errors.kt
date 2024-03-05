@@ -37,3 +37,8 @@ class RedeclarationError(name: String, ogPos: Pos, pos: Pos) :
 
 class MissingTagError(name: String, type: String, what: String, tag: String, pos: Pos) :
         AstError("$type $name has no associated $what (declared at $pos). Did you forget to use $tag?")
+
+class MissingDescriptionError(kind: String, name: String, declared: Pos) :
+        AstError("Missing description for $kind $name (declared at $declared)")
+
+class DescMissingColonError(src: String) : AstError("Syntax error in description file $src: missing colon")

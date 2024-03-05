@@ -16,7 +16,10 @@ sealed class BodyDeclaration(name: String, pos: Pos) : Declaration(name, pos)
 class TypeDeclaration(
     val kind: String, name: String, val tags: List<Tag>, val fields: List<MemberDeclaration>,
     val members: List<FunDeclaration>, pos: Pos
-) : Declaration(name, pos)
+) : Declaration(name, pos) {
+    lateinit var description: String
+    fun hasDescription(): Boolean = ::description.isInitialized
+}
 
 class FunDeclaration(
     name: String, val params: List<String>, body: List<Statement>, pos: Pos

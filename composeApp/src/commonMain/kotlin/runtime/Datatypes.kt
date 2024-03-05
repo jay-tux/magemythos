@@ -14,6 +14,7 @@ import runtime.ast.InvalidKindError
 import runtime.ast.InvalidObjectTypeError
 import runtime.ast.ListValue
 import runtime.ast.MemberDeclaration
+import runtime.ast.MissingDescriptionError
 import runtime.ast.MissingTagError
 import runtime.ast.ObjectValue
 import runtime.ast.Pos
@@ -41,12 +42,14 @@ sealed class Type(val name: String, fields: List<MemberDeclaration>, members: Li
     var displayName: String = name
         protected set
 
-    var description: String = ""
+    lateinit var description: String
         protected set
 
     protected abstract fun mkScope(): TagScope
 
-    open fun verify() {}
+    open fun verify() {
+        if(!::description.isInitialized) throw MissingDescriptionError(mkScope().kind(), name, pos)
+    }
 
     fun construct(at: Pos, mkCallbackIterator: (waitFor: List<Expression>, after: (List<Value>) -> Value) -> ExprExecutionIterator): ExprExecutionIterator {
         finalize()
@@ -59,6 +62,7 @@ sealed class Type(val name: String, fields: List<MemberDeclaration>, members: Li
 
     interface TagScope {
         fun changeName(newName: String)
+        fun hasDesc(): Boolean
         fun changeDesc(newDesc: String)
         fun addMember(member: FunDeclaration)
         fun addField(field: MemberDeclaration)
@@ -91,6 +95,8 @@ sealed class Type(val name: String, fields: List<MemberDeclaration>, members: Li
 
         override fun getFunNthArgument(fn: String, n: Int): String? =
             membersIntl.find { it.name == name }?.params?.getOrNull(n)
+
+        override fun hasDesc(): Boolean = this@Type::description.isInitialized
     }
 
     fun finalize() {
@@ -100,6 +106,7 @@ sealed class Type(val name: String, fields: List<MemberDeclaration>, members: Li
             _tags.forEach { TagEffect.applyTag(scope, it.name, it.arguments, it.pos) }
             _tags = listOf()
             state = State.READY
+            verify()
         }
         else if(state == State.FINALIZING) {
             throw ArbitraryAstError("Type $name (declared at $pos) is part of a dependency cycle.")
@@ -107,29 +114,32 @@ sealed class Type(val name: String, fields: List<MemberDeclaration>, members: Li
     }
 
     companion object {
-        fun TypeDeclaration.build(): Type = when(kind) {
-            "ability" -> Ability(name, fields, members, pos)
-            "skill" -> Skill(name, fields, members, pos)
-            "size" -> Size(name, fields, members, pos)
-            "language" -> Language(name, fields, members, pos)
-            "damage" -> Damage(name, fields, members, pos)
-            "feat" -> Feat(name, fields, members, pos)
-            "trait" -> Trait(name, fields, members, pos)
-            "race" -> Race(name, fields, members, pos)
-            "subrace" -> Subrace(name, fields, members, pos)
-            "class" -> Class(name, fields, members, pos)
-            "subclass" -> Subclass(name, fields, members, pos)
-            "itemkind" -> ItemKind(name, fields, members, pos)
-            "itemtag" -> ItemTag(name, fields, members, pos)
-            "item" -> Item(name, fields, members, pos)
-            "spell" -> Spell(name, fields, members, pos)
-            "spellschool" -> Spellschool(name, fields, members, pos)
-            "background" -> Background(name, fields, members, pos)
-            else -> throw InvalidKindError(name, kind, pos)
-        }.also {
-            it.displayName = StringUtils.splitByCharacterTypeCamelCase(it.name).joinToString(" ")
-            it._tags = tags
-            it._cache = Runtime.getCache()
+        fun TypeDeclaration.build(): Type {
+            return when(kind) {
+                "ability" -> Ability(name, fields, members, pos)
+                "skill" -> Skill(name, fields, members, pos)
+                "size" -> Size(name, fields, members, pos)
+                "language" -> Language(name, fields, members, pos)
+                "damage" -> Damage(name, fields, members, pos)
+                "feat" -> Feat(name, fields, members, pos)
+                "trait" -> Trait(name, fields, members, pos)
+                "race" -> Race(name, fields, members, pos)
+                "subrace" -> Subrace(name, fields, members, pos)
+                "class" -> Class(name, fields, members, pos)
+                "subclass" -> Subclass(name, fields, members, pos)
+                "itemkind" -> ItemKind(name, fields, members, pos)
+                "itemtag" -> ItemTag(name, fields, members, pos)
+                "item" -> Item(name, fields, members, pos)
+                "spell" -> Spell(name, fields, members, pos)
+                "spellschool" -> Spellschool(name, fields, members, pos)
+                "background" -> Background(name, fields, members, pos)
+                else -> throw InvalidKindError(name, kind, pos)
+            }.also {
+                if(hasDescription()) it.description = this.description
+                it.displayName = StringUtils.splitByCharacterTypeCamelCase(it.name).joinToString(" ")
+                it._tags = tags
+                it._cache = Runtime.getCache()
+            }
         }
     }
 }
@@ -157,6 +167,7 @@ class Skill(name: String, fields: List<MemberDeclaration>, members: List<FunDecl
     override fun mkScope(): TagScope = SkillTagScopeImpl()
 
     override fun verify() {
+        super.verify()
         if (!::ability.isInitialized) throw MissingTagError(name, "Skill", "ability", "@ability", pos)
     }
 }
@@ -223,6 +234,7 @@ class Race(name: String, fields: List<MemberDeclaration>, members: List<FunDecla
     override fun mkScope(): TagScope = RaceTagScopeImpl()
 
     override fun verify() {
+        super.verify()
         if (!::size.isInitialized) throw MissingTagError(name, "Race", "size", "@size", pos)
     }
 }
@@ -246,6 +258,7 @@ class Subrace(name: String, fields: List<MemberDeclaration>, members: List<FunDe
     override fun mkScope(): TagScope = SubraceTagScopeImpl()
 
     override fun verify() {
+        super.verify()
         if (!::baseRace.isInitialized) throw MissingTagError(name, "Subrace", "base race", "@baseRace", pos)
         if(!baseRace.hasSubraces) throw ArbitraryAstError("For subrace $name (declared at $pos): base race ${baseRace.name} does not support subraces.")
     }
@@ -301,6 +314,7 @@ class Class(name: String, fields: List<MemberDeclaration>, members: List<FunDecl
     override fun mkScope(): TagScope = ClassTagScopeImpl()
 
     override fun verify() {
+        super.verify()
         if(!::hitDie.isInitialized) throw MissingTagError(name, "Class", "hit die", "@hitDie", pos)
     }
 }
@@ -350,6 +364,7 @@ class Subclass(name: String, fields: List<MemberDeclaration>, members: List<FunD
     override fun mkScope(): TagScope = SubclassTagScopeImpl()
 
     override fun verify() {
+        super.verify()
         if (!::baseClass.isInitialized) throw MissingTagError(name, "Subclass", "base class", "@baseClass", pos)
         if(!::traits.isInitialized) throw MissingTagError(name, "Subclass", "traits", "@traits", pos)
     }
@@ -459,6 +474,7 @@ class Item(name: String, fields: List<MemberDeclaration>, members: List<FunDecla
     override fun mkScope(): TagScope = ItemScopeImpl()
 
     override fun verify() {
+        super.verify()
         if(cost.amount < 0) throw MissingTagError(name, "Item", "cost", "@value", pos)
         if(weight == -1f) throw MissingTagError(name, "Item", "weight", "@weight", pos)
     }
@@ -499,6 +515,7 @@ class Spell(name: String, fields: List<MemberDeclaration>, members: List<FunDecl
     override fun mkScope(): TagScope = SpellTagScopeImpl()
 
     override fun verify() {
+        super.verify()
         if (!::school.isInitialized) throw MissingTagError(name, "Spell", "school", "@school", pos)
     }
 }

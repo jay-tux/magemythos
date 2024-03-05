@@ -177,7 +177,10 @@ fun CharacterRacePage(selectedRace: Int, selectedSubrace: Int, races: List<Race>
         SelectionList("Select a subrace for ${races[selectedRace].displayName}", selectedSubrace, subraces, "Back to race selection", { override = true }, onPickSubrace)
     }
     else {
-        SelectionList("Select a character race", selectedRace, races, "Cancel race selection", cancel, onPickRace)
+        SelectionList("Select a character race", selectedRace, races, "Cancel race selection", cancel) {
+            override = false
+            onPickRace(it)
+        }
     }
 }
 
