@@ -2,6 +2,7 @@ package runtime.ast
 
 import runtime.Ability
 import runtime.Armor
+import runtime.Background
 import runtime.Choice
 import runtime.ChoiceScope
 import runtime.Class
@@ -27,45 +28,45 @@ import runtime.Type
 import runtime.TypeError
 import runtime.Weapon
 
-class TagEffect(private val name: String, private val argCount: Int, private val onApply: TagEffect.(Type.TagScope, List<Expression>, ICache, Pos) -> Unit) {
+class TagEffect(private val name: String, private val argCount: Int, private val onApply: TagEffect.(Type.TagScope, List<Expression>, Pos) -> Unit) {
     private fun checkArgCount(args: List<Expression>, at: Pos) {
         if (args.size != argCount) {
             throw TagArgumentError(name, argCount, args.size, at)
         }
     }
 
-    fun apply(scope: Type.TagScope, args: List<Expression>, cache: ICache, at: Pos) {
+    fun apply(scope: Type.TagScope, args: List<Expression>, at: Pos) {
         checkArgCount(args, at)
-        onApply(scope, args, cache, at)
+        onApply(scope, args, at)
     }
 
-    private fun evaluate(e: Expression, cache: ICache): Value {
+    private fun evaluate(e: Expression): Value {
         val ctx = Context(executing = listOf(ReturnStmt(e, e.pos)), pos = e.pos)
         val eval = ctx.getEvaluator()
         return eval.runUntilCompletion()
     }
 
     private object Tags {
-        val name = TagEffect("@name", 1) { scope, args, cache, _ ->
+        val name = TagEffect("@name", 1) { scope, args, _ ->
             scope.changeName(
-                evaluate(args[0], cache).require<StringValue>(
+                evaluate(args[0]).require<StringValue>(
                     "string",
                     args[0].pos
                 ).value
             )
         }
 
-        val noDesc = TagEffect("@noDesc", 0) { scope, _, _, _ ->
+        val noDesc = TagEffect("@noDesc", 0) { scope, _, _ ->
             scope.changeDesc("")
         }
 
-        val ability = TagEffect("@ability", 1) { scope, args, cache, at ->
+        val ability = TagEffect("@ability", 1) { scope, args, at ->
             scope.requireScope<Skill.SkillTagScope>(this, at).changeAbility(
-                evaluate(args[0], cache).require<ObjectValue>("ability object", args[0].pos)
+                evaluate(args[0]).require<ObjectValue>("ability object", args[0].pos)
             )
         }
 
-        val requirement = TagEffect("@requirement", 1) { scope, args, _, at ->
+        val requirement = TagEffect("@requirement", 1) { scope, args, at ->
             scope.addMember(
                 FunDeclaration(
                     "canChoose",
@@ -76,19 +77,19 @@ class TagEffect(private val name: String, private val argCount: Int, private val
             )
         }
 
-        val miscAction = TagEffect("@miscAction", 2) { scope, args, _, at ->
+        val miscAction = TagEffect("@miscAction", 2) { scope, args, at ->
             Runtime.getLogger().logWarning("@miscAction tag is not implemented yet (used at $at).") // TODO
         }
 
-        val repeatable = TagEffect("@repeatable", 0) { scope, _, _, at ->
+        val repeatable = TagEffect("@repeatable", 0) { scope, _, at ->
             scope.requireScope<Trait.TraitTagScope>(this, at).makeRepeatable()
         }
 
-        val allowSubraces = TagEffect("@allowSubraces", 0) { scope, _, _, at ->
+        val allowSubraces = TagEffect("@allowSubraces", 0) { scope, _, at ->
             scope.requireScope<Race.RaceTagScope>(this, at).enableSubrace()
         }
 
-        val asi = TagEffect("@ASI", 1) { scope, args, _, at ->
+        val asi = TagEffect("@ASI", 1) { scope, args, at ->
             val member = listOf(
                 // for(__it in args[0]) {
                 //      asi(__it[0], __it[1])
@@ -123,13 +124,13 @@ class TagEffect(private val name: String, private val argCount: Int, private val
             }
         }
 
-        val size = TagEffect("@size", 1) { scope, args, cache, at ->
+        val size = TagEffect("@size", 1) { scope, args, at ->
             scope.requireScope<Race.RaceTagScope>(this, at).setSize(
-                evaluate(args[0], cache).require<ObjectValue>("size object", args[0].pos)
+                evaluate(args[0]).require<ObjectValue>("size object", args[0].pos)
             )
         }
 
-        val languages = TagEffect("@languages", 1) { scope, args, _, at ->
+        val languages = TagEffect("@languages", 1) { scope, args, at ->
             val member = listOf(
                 ExprStmt(
                     CallExpression(
@@ -151,7 +152,7 @@ class TagEffect(private val name: String, private val argCount: Int, private val
             }
         }
 
-        val traits = TagEffect("@traits", 1) { scope, args, cache, at ->
+        val traits = TagEffect("@traits", 1) { scope, args, at ->
             val member = listOf(
                 ExprStmt(
                     CallExpression(
@@ -170,81 +171,81 @@ class TagEffect(private val name: String, private val argCount: Int, private val
                     "onGain", member
                 )
                 is Subclass.SubclassTagScope -> scope.setTraits(
-                    evaluate(args[0], cache).require<ListValue>("list", args[0].pos)
+                    evaluate(args[0]).require<ListValue>("list", args[0].pos)
                 )
                 else -> throw TagInvalidReceiverError(name, scope.kind(), at)
             }
         }
 
-        val subraceFor = TagEffect("@subraceFor", 1) { scope, args, cache, at ->
+        val subraceFor = TagEffect("@subraceFor", 1) { scope, args, at ->
             scope.requireScope<Subrace.SubraceTagScope>(this, at).setBaseRace(
-                evaluate(args[0], cache).require<ObjectValue>("race object", args[0].pos)
+                evaluate(args[0]).require<ObjectValue>("race object", args[0].pos)
             )
         }
 
-        val kind = TagEffect("@kind", 1) { scope, args, cache, at ->
+        val kind = TagEffect("@kind", 1) { scope, args, at ->
             scope.requireScope<ItemTag.ItemTagScope>(this, at).setKind(
-                evaluate(args[0], cache).require<ObjectValue>("item kind object", args[0].pos)
+                evaluate(args[0]).require<ObjectValue>("item kind object", args[0].pos)
             )
         }
 
-        val value = TagEffect("@value", 1) { scope, args, cache, at ->
+        val value = TagEffect("@value", 1) { scope, args, at ->
             scope.requireScope<Item.ItemScope>(this, at).setCost(
-                evaluate(args[0], cache).require<CurrencyValue>("currency", args[0].pos)
+                evaluate(args[0]).require<CurrencyValue>("currency", args[0].pos)
             )
         }
 
-        val weight = TagEffect("@weight", 1) { scope, args, cache, at ->
+        val weight = TagEffect("@weight", 1) { scope, args, at ->
             scope.requireScope<Item.ItemScope>(this, at).setWeight(
-                evaluate(args[0], cache).require<FloatValue>("float", args[0].pos).value
+                evaluate(args[0]).require<FloatValue>("float", args[0].pos).value
             )
         }
 
-        val tag = TagEffect("@tag", 1) { scope, args, cache, at ->
+        val tag = TagEffect("@tag", 1) { scope, args, at ->
             scope.requireScope<Item.ItemScope>(this, at).addTag(
-                evaluate(args[0], cache).require<ObjectValue>("item tag object", args[0].pos)
+                evaluate(args[0]).require<ObjectValue>("item tag object", args[0].pos)
             )
         }
 
-        val armor = TagEffect("@armor", 4) { scope, args, cache, at ->
+        val armor = TagEffect("@armor", 4) { scope, args, at ->
             scope.requireScope<Item.ItemScope>(this, at).addData(
                 Armor(
-                    evaluate(args[0], cache).require<IntValue>("int", args[0].pos).value,
-                    evaluate(args[1], cache).require<IntValue>("int", args[1].pos).value,
-                    evaluate(args[2], cache).require<IntValue>("int", args[2].pos).value,
-                    evaluate(args[3], cache).require<BoolValue>("bool", args[3].pos).value
+                    evaluate(args[0]).require<IntValue>("int", args[0].pos).value,
+                    evaluate(args[1]).require<IntValue>("int", args[1].pos).value,
+                    evaluate(args[2]).require<IntValue>("int", args[2].pos).value,
+                    evaluate(args[3]).require<BoolValue>("bool", args[3].pos).value
                 )
             )
         }
 
-        val tool = TagEffect("@tool", 0) { scope, _, _, at ->
+        val tool = TagEffect("@tool", 0) { scope, _, at ->
             scope.requireScope<Item.ItemScope>(this, at).addData(Tool)
         }
 
-        val modAC = TagEffect("@modAC", 1) { scope, args, cache, at ->
+        val modAC = TagEffect("@modAC", 1) { scope, args, at ->
             Runtime.getLogger().logWarning("@modAC tag is not implemented yet (used at $at).") // TODO
         }
 
-        val weapon = TagEffect("@weapon", 4) { scope, args, cache, at ->
+        val weapon = TagEffect("@weapon", 4) { scope, args, at ->
             scope.requireScope<Item.ItemScope>(this, at).addData(
                 Weapon(
-                    evaluate(args[0], cache).require<ObjectValue>("item tag object", args[0].pos).type.let {
+                    evaluate(args[0]).require<ObjectValue>("item tag object", args[0].pos).type.let {
                         it as? ItemTag ?: throw InvalidObjectTypeError("ItemTag", it.javaClass.simpleName, args[0].pos)
                     },
-                    evaluate(args[1], cache).require<ObjectValue>("item tag object", args[1].pos).type.let {
+                    evaluate(args[1]).require<ObjectValue>("item tag object", args[1].pos).type.let {
                         it as? ItemTag ?: throw InvalidObjectTypeError("ItemTag", it.javaClass.simpleName, args[0].pos)
                     },
-                    evaluate(args[2], cache).let {
+                    evaluate(args[2]).let {
                         it.requireOrNull<RollValue>()?.toIOR() ?: it.require<IntValue>("roll or int", args[2].pos).toIOR()
                     },
-                    evaluate(args[3], cache).require<ObjectValue>("damage object", args[3].pos).type.let {
+                    evaluate(args[3]).require<ObjectValue>("damage object", args[3].pos).type.let {
                         it as? Damage ?: throw InvalidObjectTypeError("Damage", it.javaClass.simpleName, args[0].pos)
                     }
                 )
             )
         }
 
-        val inheritDesc = TagEffect("@inheritDesc", 0) { scope, _, _, at ->
+        val inheritDesc = TagEffect("@inheritDesc", 0) { scope, _, at ->
             scope.requireScope<Item.ItemScope>(this, at).let {
                 it.tags().let { tags ->
                     if(tags.size != 1) throw ArbitraryAstError("@inheritDesc tag is only allowed on an Item with exactly one @tag tag.")
@@ -253,31 +254,31 @@ class TagEffect(private val name: String, private val argCount: Int, private val
             }
         }
 
-        val per = TagEffect("@per", 1) { scope, args, cache, at ->
+        val per = TagEffect("@per", 1) { scope, args, at ->
             scope.requireScope<Item.ItemScope>(this, at).setPer(
-                evaluate(args[0], cache).require<IntValue>("int", args[0].pos).value
+                evaluate(args[0]).require<IntValue>("int", args[0].pos).value
             )
         }
 
-        val pack = TagEffect("@pack", 1) { scope, args, cache, at ->
+        val pack = TagEffect("@pack", 1) { scope, args, at ->
             scope.requireScope<Item.ItemScope>(this, at).addData(
                 Pack(
-                    evaluate(args[0], cache).require<ListValue>("list", args[0].pos).value.map {
+                    evaluate(args[0]).require<ListValue>("list", args[0].pos).value.map {
                         it.require<ObjectValue>("item object", it.pos)
                     }
                 )
             )
         }
 
-        val charges = TagEffect("@charges", 2) { scope, args, cache, at ->
+        val charges = TagEffect("@charges", 2) { scope, args, at ->
             Runtime.getLogger().logWarning("@charges tag is not implemented yet (used at $at).") // TODO
         }
 
-        val bonusAction = TagEffect("@bonusAction", 0) { scope, args, cache, at ->
+        val bonusAction = TagEffect("@bonusAction", 0) { scope, args, at ->
             Runtime.getLogger().logWarning("@bonusAction tag is not implemented yet (used at $at).") // TODO
         }
 
-        val descLevelDep = TagEffect("@descLevelDep", 1) { scope, args, cache, at ->
+        val descLevelDep = TagEffect("@descLevelDep", 1) { scope, args, at ->
             scope.appendOrCreateMember("onLevelUp", listOf(
                 ExprStmt(
                     CallExpression(
@@ -290,13 +291,13 @@ class TagEffect(private val name: String, private val argCount: Int, private val
             ), listOf("level"))
         }
 
-        val hitDie = TagEffect("@hitDie", 1) { scope, args, cache, at ->
+        val hitDie = TagEffect("@hitDie", 1) { scope, args, at ->
             scope.requireScope<Class.ClassTagScope>(this, at).setHitDie(
-                evaluate(args[0], cache).require<DiceValue>("dice", args[0].pos)
+                evaluate(args[0]).require<DiceValue>("dice", args[0].pos)
             )
         }
 
-        val armorProf = TagEffect("@armorProf", 1) { scope, args, _, at ->
+        val armorProf = TagEffect("@armorProf", 1) { scope, args, at ->
             scope.requireScope<Class.ClassTagScope>(this, at).appendOrCreateMember(
                 "onSelect", listOf(
                     ExprStmt(
@@ -311,7 +312,7 @@ class TagEffect(private val name: String, private val argCount: Int, private val
             )
         }
 
-        val weaponProf = TagEffect("@weaponProf", 1) { scope, args, _, at ->
+        val weaponProf = TagEffect("@weaponProf", 1) { scope, args, at ->
             scope.requireScope<Class.ClassTagScope>(this, at).appendOrCreateMember(
                 "onSelect", listOf(
                     ExprStmt(
@@ -326,7 +327,7 @@ class TagEffect(private val name: String, private val argCount: Int, private val
             )
         }
 
-        val toolProf = TagEffect("@toolProf", 1) { scope, args, _, at ->
+        val toolProf = TagEffect("@toolProf", 1) { scope, args, at ->
             scope.requireScope<Class.ClassTagScope>(this, at).appendOrCreateMember(
                 "onSelect", listOf(
                     ExprStmt(
@@ -341,7 +342,7 @@ class TagEffect(private val name: String, private val argCount: Int, private val
             )
         }
 
-        val savingThrowProf = TagEffect("@savingThrowProf", 1) { scope, args, _, at ->
+        val savingThrowProf = TagEffect("@savingThrowProf", 1) { scope, args, at ->
             scope.requireScope<Class.ClassTagScope>(this, at).appendOrCreateMember(
                 "onSelect", listOf(
                     ExprStmt(
@@ -356,7 +357,7 @@ class TagEffect(private val name: String, private val argCount: Int, private val
             )
         }
 
-        val skillProf = TagEffect("@skillProf", 2) { scope, args, _, at ->
+        val skillProf = TagEffect("@skillProf", 2) { scope, args, at ->
             scope.requireScope<Class.ClassTagScope>(this, at).appendOrCreateMember(
                 "onSelect", listOf(
                     ExprStmt(
@@ -377,7 +378,7 @@ class TagEffect(private val name: String, private val argCount: Int, private val
             )
         }
 
-        val startEquipment = TagEffect("@startEquipment", 1) { scope, args, _, at ->
+        val startEquipment = TagEffect("@startEquipment", 1) { scope, args, at ->
             scope.requireScope<Class.ClassTagScope>(this, at).appendOrCreateMember(
                 "onSelect", listOf(
                     ExprStmt(
@@ -392,7 +393,7 @@ class TagEffect(private val name: String, private val argCount: Int, private val
             )
         }
 
-        val traitsByLevel = TagEffect("@traitsByLevel", 1) { scope, args, _, at ->
+        val traitsByLevel = TagEffect("@traitsByLevel", 1) { scope, args, at ->
             scope.requireScope<Class.ClassTagScope>(this, at).appendOrCreateMember(
                 "onLevelUp", listOf(
                     ExprStmt(
@@ -411,33 +412,33 @@ class TagEffect(private val name: String, private val argCount: Int, private val
             )
         }
 
-        val reaction = TagEffect("@reaction", 2) { scope, args, cache, at ->
+        val reaction = TagEffect("@reaction", 2) { scope, args, at ->
             Runtime.getLogger().logWarning("@reaction tag is not implemented yet (used at $at).") // TODO
         }
 
-        val subclassFor = TagEffect("@subclassFor", 1) { scope, args, cache, at ->
+        val subclassFor = TagEffect("@subclassFor", 1) { scope, args, at ->
             scope.requireScope<Subclass.SubclassTagScope>(this, at).setBaseClass(
-                evaluate(args[0], cache).require<ObjectValue>("class object", args[0].pos)
+                evaluate(args[0]).require<ObjectValue>("class object", args[0].pos)
             )
         }
 
-        val action = TagEffect("@action", 0) { scope, _, cache, at ->
+        val action = TagEffect("@action", 0) { scope, _, at ->
             Runtime.getLogger().logWarning("@action tag is not implemented yet (used at $at).") // TODO
         }
 
-        val casterKnown = TagEffect("@casterKnown", 5) { scope, args, cache, at ->
+        val casterKnown = TagEffect("@casterKnown", 5) { scope, args, at ->
             scope.requireScope<Class.ClassTagScope>(this, at).let { s ->
-                val ability = evaluate(args[0], cache).castThrough<Ability>()
-                val slotsByLevel = evaluate(args[1], cache).require<ListValue>("list", args[1].pos).value.map {
+                val ability = evaluate(args[0]).castThrough<Ability>()
+                val slotsByLevel = evaluate(args[1]).require<ListValue>("list", args[1].pos).value.map {
                     it.require<ListValue>("list", it.pos).value.map { c -> c.require<IntValue>("int", c.pos).value }
                 }
-                val spellList = evaluate(args[2], cache).require<ListValue>("list", args[2].pos).value.map {
+                val spellList = evaluate(args[2]).require<ListValue>("list", args[2].pos).value.map {
                     it.castThrough<Spell>()
                 }
-                val cantripsByLevel = evaluate(args[3], cache).require<ListValue>("list", args[3].pos).value.map {
+                val cantripsByLevel = evaluate(args[3]).require<ListValue>("list", args[3].pos).value.map {
                     it.require<IntValue>("int", it.pos).value
                 }
-                val knownByLevel = evaluate(args[4], cache).require<ListValue>("list", args[4].pos).value.map {
+                val knownByLevel = evaluate(args[4]).require<ListValue>("list", args[4].pos).value.map {
                     it.require<IntValue>("int", it.pos).value
                 }
 
@@ -445,44 +446,96 @@ class TagEffect(private val name: String, private val argCount: Int, private val
             }
         }
 
-        val ritualCasting = TagEffect("@ritualCasting", 0) { scope, _, _, at ->
+        val ritualCasting = TagEffect("@ritualCasting", 0) { scope, _, at ->
             scope.requireScope<Class.ClassTagScope>(this, at).enableRitualCasting()
         }
 
-        val usesCharges = TagEffect("@usesCharges", 2) { scope, args, cache, at ->
+        val usesCharges = TagEffect("@usesCharges", 2) { scope, args, at ->
             Runtime.getLogger().logWarning("@usesCharges tag is not implemented yet (used at $at).") // TODO
         }
 
-        val rangedSpellAttack = TagEffect("@rangedSpellAttack", 7) { scope, args, cache, at ->
+        val rangedSpellAttack = TagEffect("@rangedSpellAttack", 7) { scope, args, at ->
             Runtime.getLogger().logWarning("@rangedSpellAttack tag is not implemented yet (used at $at).") // TODO
         }
 
-        val rangedSpellDC = TagEffect("@rangedSpellDC", 8) { scope, args, cache, at ->
+        val rangedSpellDC = TagEffect("@rangedSpellDC", 8) { scope, args, at ->
             Runtime.getLogger().logWarning("@rangedSpellDc tag is not implemented yet (used at $at).") // TODO
         }
 
-        val miscSpell = TagEffect("@miscSpell", 5) { scope, args, cache, at ->
+        val miscSpell = TagEffect("@miscSpell", 5) { scope, args, at ->
             Runtime.getLogger().logWarning("@miscSpell tag is not implemented yet (used at $at).") // TODO
         }
 
-        val instant = TagEffect("@instant", 0) { scope, _, _, at ->
+        val instant = TagEffect("@instant", 0) { scope, _, at ->
             scope.requireScope<Spell.SpellTagScope>(this, at).setDuration(Instantaneous)
         }
 
-        val duration = TagEffect("@duration", 1) { scope, args, cache, at ->
+        val duration = TagEffect("@duration", 1) { scope, args, at ->
             scope.requireScope<Spell.SpellTagScope>(this, at).setDuration(
-                NoConcentration(evaluate(args[0], cache).require<StringValue>("string", args[0].pos).value)
+                NoConcentration(evaluate(args[0]).require<StringValue>("string", args[0].pos).value)
             )
         }
 
-        val castingTime = TagEffect("@castingTime", 1) { scope, args, cache, at ->
+        val castingTime = TagEffect("@castingTime", 1) { scope, args, at ->
             Runtime.getLogger().logWarning("@castingTime tag is not implemented yet (used at $at).") // TODO
         }
 
-        val school = TagEffect("@school", 1) { scope, args, cache, at ->
+        val school = TagEffect("@school", 1) { scope, args, at ->
             scope.requireScope<Spell.SpellTagScope>(this, at).setSchool(
-                evaluate(args[0], cache).require<ObjectValue>("spellschool object", args[0].pos)
+                evaluate(args[0]).require<ObjectValue>("spellschool object", args[0].pos)
             )
+        }
+
+        val bgSkills = TagEffect("@bgSkills", 1) { scope, args, at ->
+            scope.requireScope<Background.BackgroundTagScope>(this, at).appendOrCreateMember("onSelect", listOf(
+                ExprStmt(
+                    CallExpression(
+                        "addSkillProficiencies", listOf(
+                            args[0]
+                        ), at
+                    ),
+                    at
+                )
+            ), listOf())
+        }
+
+        val bgLanguages = TagEffect("@bgLanguages", 1) { scope, args, at ->
+            scope.requireScope<Background.BackgroundTagScope>(this, at).appendOrCreateMember("onSelect", listOf(
+                ExprStmt(
+                    CallExpression(
+                        "addLanguages", listOf(
+                            args[0]
+                        ), at
+                    ),
+                    at
+                )
+            ), listOf())
+        }
+
+        val feature = TagEffect("@feature", 1) { scope, args, at ->
+            scope.requireScope<Background.BackgroundTagScope>(this, at).appendOrCreateMember("onSelect", listOf(
+                ExprStmt(
+                    CallExpression(
+                        "addTraits", listOf(
+                            args[0]
+                        ), at
+                    ),
+                    at
+                )
+            ), listOf())
+        }
+        
+        val bgEquip = TagEffect("@bgEquip", 1) { scope, args, at ->
+            scope.requireScope<Background.BackgroundTagScope>(this, at).appendOrCreateMember("onSelect", listOf(
+                ExprStmt(
+                    CallExpression(
+                        "addItems", listOf(
+                            args[0]
+                        ), at
+                    ),
+                    at
+                )
+            ), listOf())
         }
     }
 
@@ -506,7 +559,8 @@ class TagEffect(private val name: String, private val argCount: Int, private val
             yield(Tags.ritualCasting); yield(Tags.usesCharges); yield(Tags.tool)
             yield(Tags.rangedSpellAttack); yield(Tags.rangedSpellDC); yield(Tags.miscSpell)
             yield(Tags.instant); yield(Tags.duration); yield(Tags.castingTime)
-            yield(Tags.school)
+            yield(Tags.school); yield(Tags.bgSkills); yield(Tags.bgLanguages)
+            yield(Tags.feature); yield(Tags.bgEquip)
         }.associateBy { it.name }
 
         private val mkChoiceScope: (Pos) -> ChoiceScope = { p ->
@@ -525,11 +579,10 @@ class TagEffect(private val name: String, private val argCount: Int, private val
             scope: Type.TagScope,
             name: String,
             args: List<Expression>,
-            cache: ICache,
             at: Pos
         ) {
             val effect = effects[name] ?: throw InvalidTagError(name, at)
-            effect.apply(scope, args, cache, at)
+            effect.apply(scope, args, at)
         }
 
         private inline fun <reified T> Value.castThrough(): T = (this as? ObjectValue ?: throw TypeError("object", this, pos)).type as? T

@@ -17,3 +17,8 @@ interface ICache {
     fun functionIterator(): Iterator<FunDeclaration>
     fun globalIterator(): Iterator<Variable>
 }
+
+inline fun <reified T : Type> ICache.typesOfKind(): List<T> = typeIterator().asSequence().filterIsInstance<T>().toList()
+fun ICache.subracesFor(race: Race): List<Subrace> =
+    if(!race.hasSubraces) listOf()
+    else typesOfKind<Subrace>().filter { it.baseRace == race }

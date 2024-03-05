@@ -2,6 +2,7 @@ package runtime
 
 import ILogger
 import immutable
+import org.apache.commons.lang3.StringUtils
 import runtime.ast.ArbitraryAstError
 import runtime.ast.Currency
 import runtime.ast.CurrencyValue
@@ -96,7 +97,7 @@ sealed class Type(val name: String, fields: List<MemberDeclaration>, members: Li
         if(state == State.WAITING) {
             state = State.FINALIZING
             val scope = mkScope()
-            _tags.forEach { TagEffect.applyTag(scope, it.name, it.arguments, _cache, it.pos) }
+            _tags.forEach { TagEffect.applyTag(scope, it.name, it.arguments, it.pos) }
             _tags = listOf()
             state = State.READY
         }
@@ -123,8 +124,13 @@ sealed class Type(val name: String, fields: List<MemberDeclaration>, members: Li
             "item" -> Item(name, fields, members, pos)
             "spell" -> Spell(name, fields, members, pos)
             "spellschool" -> Spellschool(name, fields, members, pos)
+            "background" -> Background(name, fields, members, pos)
             else -> throw InvalidKindError(name, kind, pos)
-        }.also { it._tags = tags; it._cache = Runtime.getCache() }
+        }.also {
+            it.displayName = StringUtils.splitByCharacterTypeCamelCase(it.name).joinToString(" ")
+            it._tags = tags
+            it._cache = Runtime.getCache()
+        }
     }
 }
 
@@ -243,6 +249,15 @@ class Subrace(name: String, fields: List<MemberDeclaration>, members: List<FunDe
         if (!::baseRace.isInitialized) throw MissingTagError(name, "Subrace", "base race", "@baseRace", pos)
         if(!baseRace.hasSubraces) throw ArbitraryAstError("For subrace $name (declared at $pos): base race ${baseRace.name} does not support subraces.")
     }
+}
+
+class Background(name: String, fields: List<MemberDeclaration>, members: List<FunDeclaration>, pos: Pos) : Type(name, fields, members, pos) {
+    interface BackgroundTagScope : TagScope
+    private inner class BackgroundTagScopeImpl : TagScopeImpl(), BackgroundTagScope {
+        override fun kind(): String = "Background"
+    }
+
+    override fun mkScope(): TagScope = BackgroundTagScopeImpl()
 }
 
 sealed class SpellcasterKind(val ab: Ability, val slotsByLevel: List<List<Int>>, val spellList: List<Spell>, val cantripsByLevel: List<Int>) {

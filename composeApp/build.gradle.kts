@@ -38,18 +38,19 @@ kotlin {
                 implementation(libs.arrow)
                 implementation(compose.runtime)
                 implementation(compose.foundation)
-                implementation(compose.material)
+//                implementation(compose.material)
+                implementation(libs.compose.material3)
                 implementation(compose.ui)
-                @OptIn(ExperimentalComposeLibrary::class)
                 implementation(compose.components.resources)
                 implementation(libs.antlr)
                 implementation(libs.filepicker)
                 implementation(libs.kotlinx.serialization.json)
+                implementation(libs.apache.commonslang)
             }
         }
         desktopMain.dependencies {
             implementation(compose.desktop.currentOs)
-            implementation(libs.androidx.material3.desktop)
+            implementation(libs.compose.material3)
             implementation(libs.appdirs)
         }
     }

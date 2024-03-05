@@ -1,4 +1,3 @@
-import androidx.compose.desktop.ui.tooling.preview.Preview
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -16,10 +15,8 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -29,12 +26,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
-import kotlinx.coroutines.GlobalScope
-import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
-import runtime.Character
 import runtime.Runtime
-import runtime.ast.AstBuilder
+import ui.CharacterCreationDialog
 import ui.Console
 import ui.theme.MageMythosTheme
 
@@ -45,9 +39,9 @@ enum class BottomTab(val show: String) {
 @Composable
 fun mainView(cache: DesktopCache) = Surface {
     var bottomTab by remember { mutableStateOf(BottomTab.NONE) }
-    val logs = cache.messages
     val characters = cache.characters
     var selected by remember { mutableStateOf(-1) }
+    var creationOpened by remember { mutableStateOf(false) }
 
     Column(Modifier.padding(5.dp)) {
         Row(Modifier.weight(0.75f)) {
@@ -74,7 +68,7 @@ fun mainView(cache: DesktopCache) = Surface {
                     }
                 }
                 Button(
-                    { /* TODO */},
+                    { creationOpened = true },
                     Modifier.align(Alignment.CenterHorizontally).fillMaxWidth(0.9f),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = MaterialTheme.colorScheme.secondaryContainer,
@@ -133,6 +127,9 @@ fun mainView(cache: DesktopCache) = Surface {
             }
         }
     }
+
+    if(creationOpened)
+        CharacterCreationDialog({ creationOpened = false }) { creationOpened = false }
 }
 
 fun main() = application {
