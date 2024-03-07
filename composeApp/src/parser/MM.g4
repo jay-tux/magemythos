@@ -56,7 +56,7 @@ declaration:
 bodyDecl:
     funDecl                                               #memberFunc
   | globalDecl                                            #memberConst
-  | VAR name=ID EQ value=expr SEMI                        #memberField;
+  | VAR name=ID EQ value=expr SEMI                        #memberField; // TODO: remove fields, they seem obsolete?
 
 funDecl: FUN name=ID PO args=idList? PC BO body+=stmt* BC;
 

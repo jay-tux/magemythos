@@ -20,18 +20,24 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.launch
 import runtime.Background
 import runtime.Class
 import runtime.Race
 import runtime.Runtime
 import runtime.Subrace
 import runtime.Type
+import runtime.Character
+import runtime.ChoiceScope
+import runtime.ExecutionIterator
 import runtime.subracesFor
 import runtime.typesOfKind
 import java.awt.GraphicsEnvironment
@@ -40,7 +46,7 @@ import kotlin.math.min
 enum class CreationPage { MAIN, RACE, CLASS, BACKGROUND }
 
 @Composable
-fun CharacterCreationDialog(onExit: () -> Unit, onFinish: () -> Unit) {
+fun CharacterCreationDialog(onExit: () -> Unit, onFinish: () -> Unit, useRuntime: suspend ((ChoiceScope) -> ExecutionIterator) -> Unit) {
     var name by remember { mutableStateOf("") }
     val raceOptions by remember { mutableStateOf(Runtime.getCache().typesOfKind<Race>()) }
     var subraceOptions by remember { mutableStateOf(listOf<Subrace>()) }
@@ -58,6 +64,21 @@ fun CharacterCreationDialog(onExit: () -> Unit, onFinish: () -> Unit) {
     val w = min((screenSize.width * 0.3f).toInt(), 500).dp
     val h = min((screenSize.height * 0.8f).toInt(), 800).dp
 
+    val scope = rememberCoroutineScope()
+    val builder = {
+        scope.launch {
+            useRuntime { choices ->
+                Character.startBuilding(
+                    raceOptions[raceIdx],
+                    if (subraceIdx == -1) null else subraceOptions[subraceIdx],
+                    classOptions[classIdx],
+                    backgroundOptions[backgroundIdx],
+                    choices
+                )
+            }
+        }
+    }
+
     Dialog({ onFinish() }, properties = DialogProperties()) {
         Surface(Modifier.width(w).height(h).padding(5.dp).background(MaterialTheme.colorScheme.secondaryContainer)) {
             when (page) {
@@ -74,7 +95,7 @@ fun CharacterCreationDialog(onExit: () -> Unit, onFinish: () -> Unit) {
                     { page = CreationPage.CLASS },
                     { page = CreationPage.BACKGROUND },
                     onExit,
-                    { TODO() } // finalize race/class/background selection, go to ability selection
+                    { builder() }
                 )
 
                 CreationPage.RACE -> CharacterRacePage(

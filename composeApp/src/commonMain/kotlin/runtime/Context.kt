@@ -1,6 +1,8 @@
 package runtime
 
 import ILogger
+import Ref
+import Ref.Companion.makeRef
 import runtime.ast.AssignmentStmt
 import runtime.ast.BinaryExpression
 import runtime.ast.BoolValue
@@ -419,30 +421,32 @@ class Context(
         } while(!curr.isLoopBase)
     }
 
+    private fun getInvocationCallback(i: Invocation, parent: ExecutionIterator): ExecutionIterator {
+        i.checkArgCount() // throws on errors
+        val args = i.mergeArgs()
+        return when(i) {
+            is NormalInvocation -> {
+                val ctx = Context(this@Context, thisObj, i.target.body, false, true, i.pos)
+                args.forEach { (n, v) -> ctx.declare(n, v.value, true, v.pos) }
+                ctx.getEvaluator()
+            }
+            is MemberInvocation -> {
+                val ctx = Context(this@Context, i.scope, i.target.body, false, true, i.pos)
+                args.forEach { (n, v) -> ctx.declare(n, v.value, true, v.pos) }
+                ctx.getEvaluator()
+            }
+            is LibraryInvocation -> {
+                Library.invoke(i, parent)
+            }
+        }
+    }
+
     private inner class ExprBasedIterator(override val context: Context, e: Expression?, private val at: Pos, private val onFinish: (Value?) -> Unit) : StmtExecutionIterator() {
         private val it: ExecutionIterator?
 
         init {
             it = e?.let {
-                val sub = ExpressionContext(this@Context, it) { i ->
-                    i.checkArgCount() // throws on errors
-                    val args = i.mergeArgs()
-                    when(i) {
-                        is NormalInvocation -> {
-                            val ctx = Context(this@Context, thisObj, i.target.body, false, true, i.pos)
-                            args.forEach { (n, v) -> ctx.declare(n, v.value, true, v.pos) }
-                            ctx.getEvaluator()
-                        }
-                        is MemberInvocation -> {
-                            val ctx = Context(this@Context, i.scope, i.target.body, false, true, i.pos)
-                            args.forEach { (n, v) -> ctx.declare(n, v.value, true, v.pos) }
-                            ctx.getEvaluator()
-                        }
-                        is LibraryInvocation -> {
-                            Library.invoke(i, this)
-                        }
-                    }
-                }
+                val sub = ExpressionContext(this@Context, it) { i -> getInvocationCallback(i, this) }
                 sub.getEvaluator()
             }
         }
@@ -456,10 +460,8 @@ class Context(
         override fun finalValue(): Value = it?.finalValue() ?: VoidValue(at)
     }
 
-    private class ValueRef(var v: Value?)
-
-    private inner class StepBasedIterator(override val context: Context, private val at: Pos, val generator: (ValueRef) -> Sequence<ExecutionIterator>) : StmtExecutionIterator() {
-        private val ref = ValueRef(null)
+    private inner class StepBasedIterator(override val context: Context, private val at: Pos, val generator: (Ref<Value?>) -> Sequence<ExecutionIterator>) : StmtExecutionIterator() {
+        private val ref = (null as Value?).makeRef()
         private val seq = generator(ref).iterator()
         private var curr: ExecutionIterator? = null
 
@@ -467,7 +469,7 @@ class Context(
 
         override fun step() {
             if(curr == null || curr?.hasFinished() == true) {
-                ref.v = curr?.finalValue()
+                ref.set(curr?.finalValue())
                 if(seq.hasNext()) curr = seq.next()
             }
 
@@ -509,7 +511,7 @@ class Context(
         sequence {
             yield(ExprBasedIterator(this@Context, c.condition, c.condition.pos) {})
 
-            prev.v?.let {
+            prev.get()?.let {
                 val cond = it.require<BoolValue>("bool", c.condition.pos).value
                 if(cond)
                     yield(Context(this@Context, thisObj, c.bodyTrue, pos = c.pos).getEvaluator())
@@ -521,7 +523,7 @@ class Context(
 
     private fun stepInto(c: WhileStmt): ExecutionIterator = StepBasedIterator(this, c.pos) { prev ->
         val check = {
-            prev.v?.require<BoolValue>("bool", c.condition.pos)?.value ?:
+            prev.get()?.require<BoolValue>("bool", c.condition.pos)?.value ?:
                 throw RuntimeInternalError("Null-value in while's condition")
         }
 
@@ -540,7 +542,7 @@ class Context(
     private fun stepInto(c: ForStmt): ExecutionIterator = StepBasedIterator(this, c.pos) { prev ->
         sequence {
             yield(ExprBasedIterator(this@Context, c.set, c.set.pos) {})
-            val set = prev.v ?: throw RuntimeInternalError("Null-value in for's set")
+            val set = prev.get() ?: throw RuntimeInternalError("Null-value in for's set")
 
             set.requireOrNull<ListValue>()?.let {
                 for(v in it.value) {
@@ -596,6 +598,62 @@ class Context(
                     is ForStmt -> stepInto(s)
                 })
             }
+        }
+    }
+
+    interface InteractiveContext {
+        fun context(): Context
+        fun getIterator(): StmtExecutionIterator
+        fun attemptInvocation(obj: ObjectValue?, name: String, args: List<Value>, at: Pos): ExecutionIterator?
+    }
+
+    private inner class InteractiveExecutionIterator(val ctx: InteractiveContextImpl) : StmtExecutionIterator() {
+        var current: ExecutionIterator? = null
+        val iterator = ctx.seq.iterator()
+
+        override val context: Context
+            get() = ctx.context()
+
+        override fun internalFinished(): Boolean = current == null && !iterator.hasNext()
+
+        override fun step() {
+            current?.let {
+                it.step()
+                if(it.hasFinished()) {
+                    ctx.ref.set(it.finalValue())
+                    current = null
+                }
+            } ?: if(iterator.hasNext()) {
+                current = iterator.next().invoke(ctx)
+            } else {}
+        }
+
+        override fun finalValue(): Value = VoidValue(pos)
+    }
+
+    private inner class InteractiveContextImpl(val ref: Ref<Value>, val seq: Sequence<InteractiveContext.() -> ExecutionIterator?>) : InteractiveContext {
+        val iterator = InteractiveExecutionIterator(this)
+        override fun context(): Context = this@Context
+
+        override fun getIterator(): StmtExecutionIterator = iterator
+        override fun attemptInvocation(obj: ObjectValue?, name: String, args: List<Value>, at: Pos): ExecutionIterator? {
+            val fn = if(obj != null) {
+                obj.type.members.find { it.name == name }?.makeInvocation(obj, args, at)
+            } else {
+                Runtime.getCache().getFunction(name)?.makeInvocation(null, args, at)
+            }
+
+            return fn?.let {
+                getInvocationCallback(it, iterator)
+            }
+        }
+    }
+
+    companion object {
+        fun performAll(ref: Ref<Value>, callbacks: Sequence<InteractiveContext.() -> ExecutionIterator?>): StmtExecutionIterator {
+            val parent = Context(null, null, emptyList(), pos = Pos("<runtime::performAll>", 0, 0))
+            val ctx = parent.InteractiveContextImpl(ref, callbacks)
+            return ctx.getIterator()
         }
     }
 }

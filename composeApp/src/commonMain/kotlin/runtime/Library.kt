@@ -5,9 +5,9 @@ import runtime.ast.Pos
 import runtime.ast.Value
 import runtime.ast.VoidValue
 
-data class Choice(val name: String, val desc: String, val corresponding: Value)
+//data class Choice(val name: String, val desc: String, val corresponding: Value)
 interface ChoiceScope {
-    operator fun invoke(name: String, title: String, count: Int, options: List<Choice>, post: (List<Choice>) -> Unit)
+    operator fun invoke(name: String, title: String, count: Int, options: List<Value>, post: (List<Value>) -> Unit)
 }
 typealias LibraryFunc = ExecutionIterator.(List<Value>, at: Pos) -> ExprExecutionIterator
 
@@ -27,14 +27,14 @@ object Library {
 
         override fun finalValue(): Value = result
     }
-    private class ChoiceIterator(val name: String, val title: String, val options: List<Choice>, val count: Int, override val parent: ExecutionIterator, val pos: Pos) : ExprExecutionIterator() {
+    private class ChoiceIterator(val name: String, val title: String, val options: List<Value>, val count: Int, override val parent: ExecutionIterator, val pos: Pos) : ExprExecutionIterator() {
         var chosen: Value? = null
 
         init {
             if(options.size < count) throw ChoiceException(count, options.size, pos)
             if(options.size == count) {
-                chosen = if(count == 1) options[0].corresponding
-                else ListValue(options.map { it.corresponding }, pos)
+                chosen = if(count == 1) options[0]
+                else ListValue(options, pos)
             }
         }
 
@@ -45,11 +45,8 @@ object Library {
         override fun step() {
             if(!hasFinished()) {
                 withChoices {
-                    val temp = this@withChoices(name, title, count, options) { chosen =
-                        if (it.size == 1) it[0].corresponding else ListValue(
-                            it.map { x -> x.corresponding },
-                            pos
-                        )
+                    this@withChoices(name, title, count, options) {
+                        chosen = if (it.size == 1) it[0] else ListValue(it, pos)
                     }
                 }
             }

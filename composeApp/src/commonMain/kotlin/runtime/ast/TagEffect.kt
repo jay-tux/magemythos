@@ -3,7 +3,6 @@ package runtime.ast
 import runtime.Ability
 import runtime.Armor
 import runtime.Background
-import runtime.Choice
 import runtime.ChoiceScope
 import runtime.Class
 import runtime.Context
@@ -572,8 +571,8 @@ class TagEffect(private val name: String, private val argCount: Int, private val
                     name: String,
                     title: String,
                     count: Int,
-                    options: List<Choice>,
-                    post: (List<Choice>) -> Unit
+                    options: List<Value>,
+                    post: (List<Value>) -> Unit
                 ): Unit = throw SyntaxError("Can't use choice functions in tags.", p)
             }
         }
