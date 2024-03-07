@@ -21,10 +21,10 @@ import org.antlr.v4.runtime.Token
 import runtime.ICache
 import runtime.Runtime
 import runtime.Type.Companion.build
-import runtime.Variable.Companion.toVariable
 import runtime.ast.Currency.Companion.toCurrencyOrNull
 import runtime.ast.DiceValue.Companion.toDiceOrNull
 import runtime.ast.RollValue.Companion.toRollOrNull
+import runtime.ast.Variable.Companion.toVariable
 import runtime.parser.MMBaseVisitor
 import runtime.parser.MMLexer
 import runtime.parser.MMParser

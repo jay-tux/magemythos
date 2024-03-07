@@ -24,6 +24,7 @@ import runtime.ast.Tag
 import runtime.ast.TagEffect
 import runtime.ast.TypeDeclaration
 import runtime.ast.Value
+import runtime.ast.Variable
 
 sealed class Type(val name: String, fields: List<MemberDeclaration>, members: List<FunDeclaration>, val pos: Pos) {
     protected val fieldsIntl = fields.toMutableList()
@@ -49,13 +50,6 @@ sealed class Type(val name: String, fields: List<MemberDeclaration>, members: Li
 
     open fun verify() {
         if(!::description.isInitialized) throw MissingDescriptionError(mkScope().kind(), name, pos)
-    }
-
-    fun construct(at: Pos, mkCallbackIterator: (waitFor: List<Expression>, after: (List<Value>) -> Value) -> ExprExecutionIterator): ExprExecutionIterator {
-        finalize()
-        return mkCallbackIterator(
-            fields.map { it.value },
-        ) { vs -> ObjectValue(this, fields.zip(vs).associate { mkVariable(it) }, at) }
     }
 
     private fun mkVariable(it: Pair<MemberDeclaration, Value>) = it.first.name to Variable(it.first.name, it.second, true, it.second.pos)

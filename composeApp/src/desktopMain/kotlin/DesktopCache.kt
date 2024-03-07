@@ -1,13 +1,13 @@
 import androidx.compose.runtime.mutableStateListOf
 import runtime.ICache
 import runtime.Type
-import runtime.Variable
 import runtime.ast.FunDeclaration
 import java.io.Closeable
 import java.util.prefs.Preferences
 import net.harawata.appdirs.AppDirsFactory
 import runtime.Character
 import runtime.ast.Streams
+import runtime.ast.Variable
 import java.io.File
 
 class DesktopCache : LocalStorage, ICache, ILogger {

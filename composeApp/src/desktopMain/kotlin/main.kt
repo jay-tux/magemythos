@@ -27,8 +27,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
 import kotlinx.coroutines.launch
-import runtime.ChoiceScope
-import runtime.ExecutionIterator
 import runtime.Runtime
 import runtime.ast.Value
 import ui.CharacterCreationDialog
@@ -55,8 +53,6 @@ fun mainView(cache: DesktopCache) = Surface {
     var choiceCount by remember { mutableStateOf(0) }
     var choiceOptions by remember { mutableStateOf(listOf<Value>()) }
     var choicePost by remember { mutableStateOf({ _: List<Value> -> }) }
-
-    var iterator by remember { mutableStateOf<ExecutionIterator?>(null) }
 
     Column(Modifier.padding(5.dp)) {
         Row(Modifier.weight(0.75f)) {
@@ -144,37 +140,13 @@ fun mainView(cache: DesktopCache) = Surface {
     }
 
     if(creationOpened) {
-        CharacterCreationDialog({ creationOpened = false }, { creationOpened = false }) {
-            val scope = object : ChoiceScope {
-                override fun invoke(
-                    name: String,
-                    title: String,
-                    count: Int,
-                    options: List<Value>,
-                    post: (List<Value>) -> Unit
-                ) {
-                    requireChoice = true
-                    choiceName = name
-                    choiceTitle = title
-                    choiceCount = count
-                    choiceOptions = options
-                    choicePost = post
-                }
-            }
-            iterator = it(scope).also { iter ->
-                while (!requireChoice && !iter.hasFinished()) iter.step()
-            }
-        }
+        CharacterCreationDialog({ creationOpened = false }, { creationOpened = false })
     }
 
     if(requireChoice) {
         ChoiceDialog(choiceTitle, choiceOptions, choiceCount) {
             choicePost(it)
             requireChoice = false
-
-            iterator?.let { iter ->
-                while(!iter.hasFinished() && !requireChoice) iter.step()
-            }
         }
     }
 }

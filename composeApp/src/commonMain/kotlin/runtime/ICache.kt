@@ -2,6 +2,7 @@ package runtime
 
 import runtime.ast.FunDeclaration
 import runtime.ast.TypeDeclaration
+import runtime.ast.Variable
 
 interface ICache {
     fun register(type: Type)

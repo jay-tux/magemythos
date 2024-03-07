@@ -5,7 +5,6 @@ import runtime.Armor
 import runtime.Background
 import runtime.ChoiceScope
 import runtime.Class
-import runtime.Context
 import runtime.Damage
 import runtime.ICache
 import runtime.Instantaneous
@@ -39,11 +38,7 @@ class TagEffect(private val name: String, private val argCount: Int, private val
         onApply(scope, args, at)
     }
 
-    private fun evaluate(e: Expression): Value {
-        val ctx = Context(executing = listOf(ReturnStmt(e, e.pos)), pos = e.pos)
-        val eval = ctx.getEvaluator()
-        return eval.runUntilCompletion()
-    }
+    private fun evaluate(e: Expression): Value = TODO()
 
     private object Tags {
         val name = TagEffect("@name", 1) { scope, args, _ ->
@@ -564,18 +559,6 @@ class TagEffect(private val name: String, private val argCount: Int, private val
             yield(Tags.school); yield(Tags.bgSkills); yield(Tags.bgLanguages)
             yield(Tags.feature); yield(Tags.bgEquip)
         }.associateBy { it.name }
-
-        private val mkChoiceScope: (Pos) -> ChoiceScope = { p ->
-            object : ChoiceScope {
-                override fun invoke(
-                    name: String,
-                    title: String,
-                    count: Int,
-                    options: List<Value>,
-                    post: (List<Value>) -> Unit
-                ): Unit = throw SyntaxError("Can't use choice functions in tags.", p)
-            }
-        }
 
         fun applyTag(
             scope: Type.TagScope,

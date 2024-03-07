@@ -1,13 +1,9 @@
 package runtime.ast
 
-import androidx.compose.material.Text
-import androidx.compose.runtime.Composable
 import runtime.ConversionError
-import runtime.RuntimeError
+import runtime.ImmutableError
 import runtime.RuntimeInternalError
 import runtime.Type
-import runtime.TypeError
-import runtime.Variable
 
 sealed class Value(val pos: Pos) {
     inline fun <reified T: Value> require(desc: String, at: Pos): T = convertTo<T>(at)
@@ -157,4 +153,16 @@ class ObjectValue(val type: Type, val value: Map<String, Variable>, pos: Pos) : 
     override fun equals(other: Any?): Boolean = other is ObjectValue && other.value == value
     override fun hashCode(): Int = (value to type to 3).hashCode()
     override fun typeName(): String = type.name
+}
+
+class Variable(val name: String, value: Value, val mutable: Boolean, val pos: Pos) {
+    var value: Value = value
+        set(value) {
+            if (!mutable) throw ImmutableError(name, pos)
+            field = value
+        }
+
+    companion object {
+        fun GlobalDeclaration.toVariable(): Variable = TODO()
+    }
 }

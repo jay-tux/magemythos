@@ -37,7 +37,6 @@ import runtime.Subrace
 import runtime.Type
 import runtime.Character
 import runtime.ChoiceScope
-import runtime.ExecutionIterator
 import runtime.subracesFor
 import runtime.typesOfKind
 import java.awt.GraphicsEnvironment
@@ -46,7 +45,7 @@ import kotlin.math.min
 enum class CreationPage { MAIN, RACE, CLASS, BACKGROUND }
 
 @Composable
-fun CharacterCreationDialog(onExit: () -> Unit, onFinish: () -> Unit, useRuntime: suspend ((ChoiceScope) -> ExecutionIterator) -> Unit) {
+fun CharacterCreationDialog(onExit: () -> Unit, onFinish: () -> Unit) {
     var name by remember { mutableStateOf("") }
     val raceOptions by remember { mutableStateOf(Runtime.getCache().typesOfKind<Race>()) }
     var subraceOptions by remember { mutableStateOf(listOf<Subrace>()) }
@@ -67,15 +66,7 @@ fun CharacterCreationDialog(onExit: () -> Unit, onFinish: () -> Unit, useRuntime
     val scope = rememberCoroutineScope()
     val builder = {
         scope.launch {
-            useRuntime { choices ->
-                Character.startBuilding(
-                    raceOptions[raceIdx],
-                    if (subraceIdx == -1) null else subraceOptions[subraceIdx],
-                    classOptions[classIdx],
-                    backgroundOptions[backgroundIdx],
-                    choices
-                )
-            }
+            TODO()
         }
     }
 

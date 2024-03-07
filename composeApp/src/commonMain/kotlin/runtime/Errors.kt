@@ -44,5 +44,11 @@ class ScopeException(call: String, pos: Pos) :
 class ConversionError(from: String, to: String, pos: Pos) :
         RuntimeError("Cannot convert from $from to $to at $pos")
 
+class IOBError(index: Int, size: Int, pos: Pos) :
+        RuntimeError("Index $index out of bounds for size $size at $pos")
+
 class ChoiceException(required: Int, got: Int, pos: Pos) :
         RuntimeError("Impossible choice at $pos: user should choose $required options, but only $got are given")
+
+class NoFunctionError(name: String, pos: Pos) :
+        RuntimeError("Function '$name' does not exist at $pos")
