@@ -2,6 +2,7 @@ package runtime
 
 import arrow.core.Either
 import arrow.core.left
+import arrow.core.right
 import runtime.ast.DeclarationType
 import runtime.ast.Expression
 import runtime.ast.ObjectValue
@@ -11,7 +12,7 @@ import runtime.ast.Value
 import runtime.ast.Variable
 import runtime.ast.VoidValue
 
-class DfsRuntime(thisObj: ObjectValue?, invocationTarget: String, args: List<Value>, val at: Pos) {
+class DfsRuntime private constructor(thisObj: ObjectValue?, invocationTarget: String, args: List<Value>, val at: Pos) {
     interface IStatementScope {
         fun onExpr(e: Expression)
         fun onMkBlock(body: List<Statement>, at: Pos)
@@ -231,6 +232,10 @@ class DfsRuntime(thisObj: ObjectValue?, invocationTarget: String, args: List<Val
         }
     }
 
+    fun provideChoice(result: Value) {
+        onValue(result)
+    }
+
     suspend fun runUntilChoice(): Either<ChoiceDesc, Value> {
         while(!Stack.isEmpty() && choice == null) {
             when(val top = Stack.peek()) {
@@ -244,7 +249,21 @@ class DfsRuntime(thisObj: ObjectValue?, invocationTarget: String, args: List<Val
 
         return choice?.left() ?: run {
             Library.choice = null
-            TODO()
+            instance = null
+            exprResult.right()
+        }
+    }
+
+    companion object {
+        private var instance: DfsRuntime? = null
+
+        fun isRunning() = instance != null
+
+        fun getInstance(): DfsRuntime = instance ?: throw IllegalStateException("No runtime available")
+
+        fun ready(thisObj: ObjectValue? = null, invocationTarget: String, args: List<Value> = listOf(), at: Pos) {
+            if(instance != null) throw IllegalStateException("Runtime already started")
+            instance = DfsRuntime(thisObj, invocationTarget, args, at)
         }
     }
 }
