@@ -1,89 +1,115 @@
 grammar MM;
 
-/* tokens as in lexer */
-DOT:                '.';
-SEMI:               ';';
-COMMA:              ',';
+PO: '(';
+PC: ')';
+BO: '{';
+BC: '}';
+BRO: '[';
+BRC: ']';
+COMMA: ',';
+SEMI: ';';
+QMARK: '?';
+EQ: '=';
+DOT: '.';
+COLON: ':';
 
-BLOCK:              '{';
-END:                '}';
-P_OPEN:             '(';
-P_CLOSE:            ')';
+IF: 'if';
+FOR: 'for';
+FUN: 'fun';
+VAR: 'var';
+ELSE: 'else';
+TRUE: 'true';
+BREAK: 'break';
+CONST: 'const';
+FALSE: 'false';
+WHILE: 'while';
+RETURN: 'return';
 
-FS_SEP:             '#~#';
+DICE: 'd4' | 'd6' | 'd8' | 'd10' | 'd12' | 'd20' | 'd100';
+CURRENCY: 'pp' | 'gp' | 'sp' | 'cp';
+TAGNAME: '@'[a-zA-Z][a-zA-Z0-9_]*;
+ID: [a-zA-Z_][a-zA-Z0-9_]*;
+INT: [0-9]+;
+FLOAT: [0-9]*'.'[0-9]+;
 
-IN:                 'in';
-FOR:                'for';
-ITEM:               'item';
-RACE:               'race';
-CLASS:              'class';
-SKILL:              'skill';
-SPELL:              'spell';
-ENABLE:             'enable';
-SOURCE:             'source';
-ABILITY:            'ability';
-STRINGS:            'strings';
-SUBRACE:            'subrace';
-SUBCLASS:           'subclass';
-BACKGROUND:         'background';
-DEPENDS_ON:         'depends on';
+STRING: '"' ~('"')* '"';
 
-AUTO_TARGETS:       '$'[A-Z][A-Z_]*;
+COMMENT: '//' ~[\r\n]* -> skip;
+WS: [ \t\r\n]+ -> skip;
 
-IDENTIFIER:         [a-zA-Z_][a-zA-Z0-9_]*;
-STRING_LIT:         '"'~["]*'"' {setText(getText().substring(1, getText().length()-1));};
+program: preamble declaration* EOF;
 
-NEWLINE:            [\r\n]+ -> channel(HIDDEN);
-WS:                 [ \t]+ -> channel(HIDDEN);
-COMMENT:            '//'~[\r\n]*[\r\n] -> channel(HIDDEN);
+preamble: 'source' ID SEMI deps+=dependency*;
 
-ANY:                .;
+dependency: 'import' src=ID PO items=idList PC SEMI;
 
-/* strings list file */
-strings:            singleString* EOF;
+idList: ids+=ID (COMMA ids+=ID)*;
 
-singleString:       key=IDENTIFIER '=' value=STRING_LIT SEMI;
+declaration:
+    kind=ID name=ID tags=tagList?                         #simpleDecl
+  | kind=ID name=ID tags=tagList? BO body+=bodyDecl* BC   #fullDecl
+  | kind=ID names=idList                                  #simpleMultipleDecl
+  | kind=ID PO names=idList PC 'all' tags=tagList?        #multipleDecl
+  | funDecl                                               #function
+  | globalDecl                                            #global;
 
-/* rules as in parser */
-mageProg:           header enables* topLevel* EOF;
+bodyDecl:
+    funDecl                                               #memberFunc
+  | globalDecl                                            #memberConst
+  | VAR name=ID EQ value=expr SEMI                        #memberField; // TODO: remove fields, they seem obsolete?
 
-header:             SOURCE src=IDENTIFIER SEMI                              #sourceHeader
-      |             SOURCE src=IDENTIFIER DEPENDS_ON deps=STRING_LIT* SEMI  #sourceHeaderDeps
-      |             SOURCE src=IDENTIFIER SEMI setStrings                   #sourceHeaderStrings
-      |             SOURCE src=IDENTIFIER DEPENDS_ON deps=STRING_LIT* SEMI setStrings
-                                                                            #sourceHeaderDepsStrings;
+funDecl: FUN name=ID PO args=idList? PC BO body+=stmt* BC;
 
-setStrings:         STRINGS IN file=STRING_LIT (COMMA file=STRING_LIT)* SEMI;
+globalDecl: CONST name=ID EQ value=expr SEMI;
 
-enables:            ENABLE AUTO_TARGETS* SEMI;
+tagList: tags+=tag+;
 
-topLevel:           classDecl                                               #dndClass
-        |           raceDecl                                                #dndRace
-        |           subclassDecl                                            #dndSubClass
-        |           subRaceDecl                                             #dndSubRace
-        |           itemDecl                                                #dndItem
-        |           spellDecl                                               #dndSpell
-        |           backgroundDecl                                          #dndBg
-        |           abilityDecl                                             #dndAbility
-        |           skillDecl                                               #dndSkill;
+tag:
+    name=TAGNAME                                          #simpleTag
+  | name=TAGNAME PO args=exprList? PC                     #paramTag;
 
-classDecl:          CLASS name=IDENTIFIER (dispName=description)? (P_OPEN d=description P_CLOSE)? BLOCK END;
+exprList: exprs+=expr (COMMA exprs+=expr)*;
 
-raceDecl:           RACE name=IDENTIFIER (dispName=description)? (P_OPEN d=description P_CLOSE)? BLOCK END;
+stmt:
+    expr SEMI                                           #exprStmt
+  | VAR name=ID EQ value=expr SEMI                      #varDecl
+  | CONST name=ID EQ value=expr SEMI                    #constDecl
+  | name=ID EQ value=expr SEMI                          #assignStmt
+  | IF PO cond=expr PC BO body+=stmt* BC                #ifStmt
+  | IF PO cond=expr PC BO bTrue+=stmt* BC ELSE BO bFalse+=stmt* BC
+                                                        #ifElseStmt
+  | WHILE PO cond=expr PC BO body+=stmt* BC             #whileStmt
+  | FOR PO v=ID COLON set=expr PC BO body+=stmt* BC     #forStmt
+  | BREAK SEMI                                          #breakStmt
+  | RETURN e=expr? SEMI                                 #returnStmt;
 
-subclassDecl:       SUBCLASS name=IDENTIFIER (dispName=description)? FOR cls=IDENTIFIER (P_OPEN d=description P_CLOSE)? BLOCK END;
+expr:
+    literal                                               #literalExpr
+  | ID                                                    #nameExpr
+  | BRO exprs=exprList? BRC                               #listExpr
+  | ID PO args=exprList? PC                               #callExpr
+  | PO e=expr PC                                          #parenExpr
+  | count=expr DICE                                       #diceExpr
+  | count=expr CURRENCY                                   #currencyExpr
+  | base=expr BRO index=expr BRC                          #indexExpr
+  | base=expr DOT name=ID                                 #memberExpr
+  | base=expr DOT name=ID PO args=exprList? PC            #memberCallExpr
+  | op=('+' | '-' | '!') right=expr                       #unaryExpr
+  | left=expr op=('*' | '/' | '%') right=expr             #mulExpr
+  | left=expr op=('+' | '-') right=expr                   #addExpr
+  | left=expr op=('<' | '>' | '<=' | '>=' | '==' | '!=') right=expr
+                                                          #cmpExpr
+  | left=expr op=('&&' | '||') right=expr                 #boolExpr
+  | cond=expr QMARK bTrue=expr COLON bFalse=expr          #ternaryExpr
+  | begin=expr 'to' end=expr 'exclusive'?                 #rangeExpr
+  | begin=expr 'to' end=expr 'inclusive'                  #rangeInclusiveExpr;
 
-subRaceDecl:        SUBRACE name=IDENTIFIER (dispName=description)? FOR race=IDENTIFIER (P_OPEN d=description P_CLOSE)? BLOCK END;
-
-itemDecl:           ITEM name=IDENTIFIER (dispName=description)? (P_OPEN d=description P_CLOSE)? BLOCK END;
-
-spellDecl:          SPELL name=IDENTIFIER (dispName=description)? (P_OPEN d=description P_CLOSE)? BLOCK END;
-
-backgroundDecl:     BACKGROUND name=IDENTIFIER (dispName=description)? (P_OPEN d=description P_CLOSE)? BLOCK END;
-
-abilityDecl:        ABILITY name=IDENTIFIER (dispName=description)? (P_OPEN d=description P_CLOSE)? SEMI;
-
-skillDecl:          SKILL name=IDENTIFIER (dispName=description)? (P_OPEN d=description P_CLOSE)? DEPENDS_ON ability=IDENTIFIER SEMI;
-
-description:        STRING_LIT                                              #stringDescr
-           |        STRINGS DOT name=IDENTIFIER                             #refDescr;
+literal:
+    STRING                                                #stringLiteral
+  | INT                                                   #intLiteral
+  | FLOAT                                                 #floatLiteral
+  | DICE                                                  #diceLiteral
+  | TRUE                                                  #trueLiteral
+  | FALSE                                                 #falseLiteral
+  | 'INF'                                                 #infIntLiteral
+  | 'INFF'                                                #infFloatLiteral;

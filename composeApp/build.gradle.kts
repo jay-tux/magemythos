@@ -5,6 +5,12 @@ plugins {
     alias(libs.plugins.kotlinMultiplatform)
     alias(libs.plugins.androidApplication)
     alias(libs.plugins.jetbrainsCompose)
+    alias(libs.plugins.jsonSerialization)
+}
+
+repositories {
+    mavenCentral()
+    google()
 }
 
 kotlin {
@@ -29,18 +35,24 @@ kotlin {
         }
         commonMain{
             dependencies {
+                implementation(libs.arrow)
                 implementation(compose.runtime)
                 implementation(compose.foundation)
-                implementation(compose.material)
+                implementation(libs.compose.material3)
+                implementation(libs.compose.icons.extended)
                 implementation(compose.ui)
-                @OptIn(ExperimentalComposeLibrary::class)
                 implementation(compose.components.resources)
                 implementation(libs.antlr)
                 implementation(libs.filepicker)
+                implementation(libs.kotlinx.serialization.json)
+                implementation(libs.apache.commonslang)
+                implementation(libs.android.coro)
             }
         }
         desktopMain.dependencies {
             implementation(compose.desktop.currentOs)
+            implementation(libs.compose.material3)
+            implementation(libs.appdirs)
         }
     }
 }
