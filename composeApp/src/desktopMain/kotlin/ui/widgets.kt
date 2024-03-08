@@ -22,18 +22,21 @@ import java.io.File
 fun loader(local: LocalStorage) {
     var dialog by remember { mutableStateOf(false) }
     var path by remember { mutableStateOf("") }
+    val scope = rememberCoroutineScope()
 
     val runLoad = {
-        val base = path.split('/').dropLast(2).joinToString("/")
-        try {
-            AstBuilder.loadWithDeps(
-                source = path.split('/').dropLast(1).last(),
-                file = path.split('/').last().split('.')[0],
-                provider = DesktopCache.mkProvider(base)
-            )
-        }
-        catch (e: Exception) {
-            Runtime.getLogger().logError((e.message ?: "Unknown error") + "\n" + e.stackTraceToString())
+        scope.launch {
+            val base = path.split('/').dropLast(2).joinToString("/")
+            try {
+                AstBuilder.loadWithDeps(
+                    source = path.split('/').dropLast(1).last(),
+                    file = path.split('/').last().split('.')[0],
+                    provider = DesktopCache.mkProvider(base)
+                )
+            } catch (e: Exception) {
+                Runtime.getLogger()
+                    .logError((e.message ?: "Unknown error") + "\n" + e.stackTraceToString())
+            }
         }
     }
 
@@ -57,13 +60,15 @@ fun cacheLoader(cache: DesktopCache) {
     val scope = rememberCoroutineScope()
 
     val actualLoad = { it: String ->
-        try {
-            cache.resetCache()
-            cache.clearLog()
-            AstBuilder.loadEntireCache(it, DesktopCache.mkLoader())
-        }
-        catch (e: Exception) {
-            Runtime.getLogger().logError((e.message ?: "Unknown error") + "\n" + e.stackTraceToString())
+        scope.launch {
+            try {
+                cache.resetCache()
+                cache.clearLog()
+                AstBuilder.loadEntireCache(it, DesktopCache.mkLoader())
+            } catch (e: Exception) {
+                Runtime.getLogger()
+                    .logError((e.message ?: "Unknown error") + "\n" + e.stackTraceToString())
+            }
         }
     }
 

@@ -26,8 +26,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
+import runtime.Character
+import runtime.ChoiceDesc
+import runtime.DfsRuntime
 import runtime.Runtime
+import runtime.TraitOrList
+import runtime.ast.ListValue
+import runtime.ast.Pos
 import runtime.ast.Value
 import ui.CharacterCreationDialog
 import ui.ChoiceDialog
@@ -40,6 +47,28 @@ enum class BottomTab(val show: String) {
     NONE(""), CONSOLE("Console")
 }
 
+fun onChoice(scope: CoroutineScope, builder: Character.Companion.Builder?, onFail: () -> Unit, modState: (ChoiceDesc, suspend (List<Value>) -> Unit) -> Unit) {
+    scope.launch {
+        try {
+            builder?.run { choice ->
+                Runtime.getLogger().logMessage("    -> Requires choice!")
+                modState(choice) { res: List<Value> ->
+                    builder.provideChoice(
+                        choice.name,
+                        if (choice.options.size == 1) res[0] else ListValue(
+                            res,
+                            Pos("<runtime::CreateCharacter>", 0, 0)
+                        )
+                    )
+                    onChoice(scope, builder, onFail, modState)
+                }
+            }
+        } catch (e: DfsRuntime.ExecutionFailure) {
+            onFail()
+        }
+    }
+}
+
 @Composable
 fun mainView(cache: DesktopCache) = Surface {
     var bottomTab by remember { mutableStateOf(BottomTab.NONE) }
@@ -47,12 +76,18 @@ fun mainView(cache: DesktopCache) = Surface {
     var selected by remember { mutableStateOf(-1) }
     var creationOpened by remember { mutableStateOf(false) }
 
-    var requireChoice by remember { mutableStateOf(false) }
-    var choiceName by remember { mutableStateOf("") }
-    var choiceTitle by remember { mutableStateOf("") }
-    var choiceCount by remember { mutableStateOf(0) }
-    var choiceOptions by remember { mutableStateOf(listOf<Value>()) }
-    var choicePost by remember { mutableStateOf({ _: List<Value> -> }) }
+    var choice by remember { mutableStateOf<ChoiceDesc?>(null) }
+    var choicePost by remember { mutableStateOf<suspend (List<Value>) -> Unit>({}) }
+
+    val scope = rememberCoroutineScope()
+    var builder by remember { mutableStateOf<Character.Companion.Builder?>(null) }
+    val continueBuilder = {
+        Runtime.getLogger().logMessage(" -> Continuing character builder...")
+        onChoice(scope, builder, { choice = null; builder = null }, { c, post ->
+            choice = c
+            choicePost = { choice = null; post(it) }
+        })
+    }
 
     Column(Modifier.padding(5.dp)) {
         Row(Modifier.weight(0.75f)) {
@@ -140,13 +175,15 @@ fun mainView(cache: DesktopCache) = Surface {
     }
 
     if(creationOpened) {
-        CharacterCreationDialog({ creationOpened = false }, { creationOpened = false })
+        CharacterCreationDialog({ creationOpened = false }, { n, r, sr, c, b ->
+            builder = Character.Companion.Builder(n, r, sr, c, b)
+            continueBuilder()
+        })
     }
 
-    if(requireChoice) {
-        ChoiceDialog(choiceTitle, choiceOptions, choiceCount) {
-            choicePost(it)
-            requireChoice = false
+    choice?.let {
+        ChoiceDialog(it.title, it.options, it.count) { res ->
+            scope.launch { choicePost(res); choice = null }
         }
     }
 }

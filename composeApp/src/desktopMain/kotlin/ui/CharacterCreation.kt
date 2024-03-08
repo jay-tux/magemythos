@@ -38,6 +38,7 @@ import runtime.Type
 import runtime.Character
 import runtime.ChoiceDesc
 import runtime.ChoiceScope
+import runtime.DfsRuntime
 import runtime.ast.ListValue
 import runtime.subracesFor
 import runtime.typesOfKind
@@ -47,7 +48,7 @@ import kotlin.math.min
 enum class CreationPage { MAIN, RACE, CLASS, BACKGROUND }
 
 @Composable
-fun CharacterCreationDialog(onExit: () -> Unit, onFinish: () -> Unit) {
+fun CharacterCreationDialog(onExit: () -> Unit, onFinish: (String, Race, Subrace?, Class, Background) -> Unit) {
     var name by remember { mutableStateOf("") }
     val raceOptions by remember { mutableStateOf(Runtime.getCache().typesOfKind<Race>()) }
     var subraceOptions by remember { mutableStateOf(listOf<Subrace>()) }
@@ -65,28 +66,7 @@ fun CharacterCreationDialog(onExit: () -> Unit, onFinish: () -> Unit) {
     val w = min((screenSize.width * 0.3f).toInt(), 500).dp
     val h = min((screenSize.height * 0.8f).toInt(), 800).dp
 
-    var choice by remember { mutableStateOf<ChoiceDesc?>(null) }
-    var builder by remember { mutableStateOf<Character.Companion.Builder?>(null) }
-
-    val scope = rememberCoroutineScope()
-    val runBuilder = {
-        scope.launch {
-            builder?.run { c -> choice = c }
-        }
-    }
-
-    val startBuilder = {
-        builder = Character.Companion.Builder(
-            name,
-            raceOptions[raceIdx],
-            if(subraceIdx == -1) null else subraceOptions[subraceIdx],
-            classOptions[classIdx],
-            backgroundOptions[backgroundIdx]
-        )
-        runBuilder()
-    }
-
-    Dialog({ onFinish() }, properties = DialogProperties()) {
+    Dialog({ onExit() }, properties = DialogProperties()) {
         Surface(Modifier.width(w).height(h).padding(5.dp).background(MaterialTheme.colorScheme.secondaryContainer)) {
             when (page) {
                 CreationPage.MAIN -> CharacterMainPage(
@@ -102,7 +82,16 @@ fun CharacterCreationDialog(onExit: () -> Unit, onFinish: () -> Unit) {
                     { page = CreationPage.CLASS },
                     { page = CreationPage.BACKGROUND },
                     onExit,
-                    { startBuilder() }
+                    {
+                        onExit()
+                        onFinish(
+                            name,
+                            raceOptions[raceIdx],
+                            if(subraceIdx != -1) subraceOptions[subraceIdx] else null,
+                            classOptions[classIdx],
+                            backgroundOptions[backgroundIdx]
+                        )
+                    }
                 )
 
                 CreationPage.RACE -> CharacterRacePage(
@@ -129,14 +118,6 @@ fun CharacterCreationDialog(onExit: () -> Unit, onFinish: () -> Unit) {
                     { backgroundIdx = it; page = CreationPage.MAIN }
                 )
             }
-        }
-    }
-
-    choice?.let {
-        ChoiceDialog(it.title, it.options, it.count) { c ->
-            builder?.provideChoice(it.name, if(it.count == 1) c[0] else ListValue(c, c[0].pos))
-            choice = null
-            scope.launch { runBuilder() }
         }
     }
 }

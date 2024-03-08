@@ -1,5 +1,6 @@
 package runtime.ast
 
+import runtime.DfsRuntime
 import runtime.FieldError
 import runtime.IOBError
 import runtime.RuntimeInternalError
@@ -142,56 +143,49 @@ enum class BinaryOperator {
 sealed class Expression(pos: Pos) : Node(pos) {
     abstract fun argCount(): Int
     abstract operator fun get(index: Int, previous: List<Value>): Expression
-    abstract fun mergeValues(
-        values: List<Value>, lookup: (String) -> Value?, onValue: (Value) -> Unit,
-        onCall: (ObjectValue?, String, List<Value>, Pos) -> Unit, at: Pos
-    )
+    abstract fun mergeValues(values: List<Value>, scope: DfsRuntime.IExpressionScope, at: Pos)
 }
 sealed class RecursiveExpression(pos: Pos) : Expression(pos)
 class LiteralExpression(val value: Value, pos: Pos): Expression(pos) {
     override fun argCount(): Int = 0
     override fun get(index: Int, previous: List<Value>): Expression = throw RuntimeInternalError("Literal expression has no children")
-    override fun mergeValues(values: List<Value>, lookup: (String) -> Value?, onValue: (Value) -> Unit, onCall: (ObjectValue?, String, List<Value>, Pos) -> Unit, at: Pos) = onValue(value)
+    override fun mergeValues(values: List<Value>, scope: DfsRuntime.IExpressionScope, at: Pos) = scope.onValue(value)
 }
 class VariableExpression(val name: String, pos: Pos): Expression(pos) {
     override fun argCount(): Int = 0
     override fun get(index: Int, previous: List<Value>): Expression = throw RuntimeInternalError("Name expression has no children")
-    override fun mergeValues(values: List<Value>, lookup: (String) -> Value?, onValue: (Value) -> Unit, onCall: (ObjectValue?, String, List<Value>, Pos) -> Unit, at: Pos) = onValue(lookup(name) ?: throw VariableError(name, at))
+    override fun mergeValues(values: List<Value>, scope: DfsRuntime.IExpressionScope, at: Pos) = scope.onValue(scope.lookup(name, at) ?: throw VariableError(name, at))
 }
 class ListExpression(val values: List<Expression>, pos: Pos): RecursiveExpression(pos) {
     override fun argCount(): Int = values.size
     override fun get(index: Int, previous: List<Value>): Expression = values[index]
     override fun mergeValues(
-        values: List<Value>, lookup: (String) -> Value?, onValue: (Value) -> Unit,
-        onCall: (ObjectValue?, String, List<Value>, Pos) -> Unit, at: Pos
+        values: List<Value>, scope: DfsRuntime.IExpressionScope, at: Pos
     ) {
-        onValue(ListValue(values, at))
+        scope.onValue(ListValue(values, at))
     }
 }
 class CallExpression(val name: String, val args: List<Expression>, pos: Pos): Expression(pos) {
     override fun argCount(): Int = args.size
     override fun get(index: Int, previous: List<Value>): Expression = args[index]
     override fun mergeValues(
-        values: List<Value>, lookup: (String) -> Value?, onValue: (Value) -> Unit,
-        onCall: (ObjectValue?, String, List<Value>, Pos) -> Unit, at: Pos
-    ) = onCall(null, name, values, pos)
+        values: List<Value>, scope: DfsRuntime.IExpressionScope, at: Pos
+    ) = scope.onCall(null, name, values, pos)
 }
 class UnaryExpression(val op: UnaryOperator, val target: Expression, pos: Pos): Expression(pos) {
     override fun argCount(): Int = 1
     override fun get(index: Int, previous: List<Value>): Expression = target
     override fun mergeValues(
-        values: List<Value>, lookup: (String) -> Value?, onValue: (Value) -> Unit,
-        onCall: (ObjectValue?, String, List<Value>, Pos) -> Unit, at: Pos
-    ) = onValue(op.withValue(values[0], at))
+        values: List<Value>, scope: DfsRuntime.IExpressionScope, at: Pos
+    ) = scope.onValue(op.withValue(values[0], at))
 
 }
 class BinaryExpression(val op: BinaryOperator, val left: Expression, val right: Expression, pos: Pos): Expression(pos) {
     override fun argCount(): Int = 2
     override fun get(index: Int, previous: List<Value>): Expression = if(index == 0) left else right
     override fun mergeValues(
-        values: List<Value>, lookup: (String) -> Value?, onValue: (Value) -> Unit,
-        onCall: (ObjectValue?, String, List<Value>, Pos) -> Unit, at: Pos
-    ) = onValue(op.withValues(values[0], values[1], at))
+        values: List<Value>, scope: DfsRuntime.IExpressionScope, at: Pos
+    ) = scope.onValue(op.withValues(values[0], values[1], at))
 
 }
 class TernaryExpression(val cond: Expression, val bTrue: Expression, val bFalse: Expression, pos: Pos): Expression(pos) {
@@ -201,23 +195,21 @@ class TernaryExpression(val cond: Expression, val bTrue: Expression, val bFalse:
         return if(previous[0].require<BoolValue>("bool", pos).value) bTrue else bFalse
     }
     override fun mergeValues(
-        values: List<Value>, lookup: (String) -> Value?, onValue: (Value) -> Unit,
-        onCall: (ObjectValue?, String, List<Value>, Pos) -> Unit, at: Pos
-    ) = onValue(values[1])
+        values: List<Value>, scope: DfsRuntime.IExpressionScope, at: Pos
+    ) = scope.onValue(values[1])
 
 }
 class IndexExpression(val target: Expression, val index: Expression, pos: Pos): Expression(pos) {
     override fun argCount(): Int = 2
     override fun get(index: Int, previous: List<Value>): Expression = if(index == 0) target else this.index
     override fun mergeValues(
-        values: List<Value>, lookup: (String) -> Value?, onValue: (Value) -> Unit,
-        onCall: (ObjectValue?, String, List<Value>, Pos) -> Unit, at: Pos
+        values: List<Value>, scope: DfsRuntime.IExpressionScope, at: Pos
     ) {
         when(values[0]) {
             is ListValue -> {
                 val index = values[1].require<IntValue>("int", at).value
                 if(index < 0 || index >= (values[0] as ListValue).value.size) throw IOBError(index, (values[0] as ListValue).value.size, at)
-                onValue((values[0] as ListValue).value[index])
+                scope.onValue((values[0] as ListValue).value[index])
             }
             is RangeValue -> {
                 val index = values[1].require<IntValue>("int", at).value
@@ -225,7 +217,7 @@ class IndexExpression(val target: Expression, val index: Expression, pos: Pos): 
                 if(index + range.start > range.endIncl) throw IOBError(index, range.endIncl - range.start, at)
                 IntValue(range.start + index, at)
             }
-            is ObjectValue -> onValue((values[0] as ObjectValue).value[values[1].require<StringValue>("string", at).value]?.value ?: throw FieldError((values[0] as ObjectValue).type.name, values[1].require<StringValue>("string", at).value, at))
+            is ObjectValue -> scope.onValue((values[0] as ObjectValue).value[values[1].require<StringValue>("string", at).value]?.value ?: throw FieldError((values[0] as ObjectValue).type.name, values[1].require<StringValue>("string", at).value, at))
             else -> throw TypeError("list or object", values[0], at)
         }
     }
@@ -235,32 +227,29 @@ class MemberExpression(val target: Expression, val member: String, pos: Pos): Ex
     override fun argCount(): Int = 1
     override fun get(index: Int, previous: List<Value>): Expression = target
     override fun mergeValues(
-        values: List<Value>, lookup: (String) -> Value?, onValue: (Value) -> Unit,
-        onCall: (ObjectValue?, String, List<Value>, Pos) -> Unit, at: Pos
+        values: List<Value>, scope: DfsRuntime.IExpressionScope, at: Pos
     ) {
         val obj = values[0].require<ObjectValue>("object", at)
-        onValue(obj.value[member]?.value ?: throw FieldError(obj.type.name, member, at))
+        scope.onValue(obj.value[member]?.value ?: throw FieldError(obj.type.name, member, at))
     }
 }
 class MemberCallExpression(val target: Expression, val member: String, val args: List<Expression>, pos: Pos): Expression(pos) {
     override fun argCount(): Int = args.size + 1
     override fun get(index: Int, previous: List<Value>): Expression = if(index == 0) target else args[index - 1]
     override fun mergeValues(
-        values: List<Value>, lookup: (String) -> Value?, onValue: (Value) -> Unit,
-        onCall: (ObjectValue?, String, List<Value>, Pos) -> Unit, at: Pos
-    ) = onCall(values[0].requireOrNull<ObjectValue>(), member, values.subList(1, values.size), pos)
+        values: List<Value>, scope: DfsRuntime.IExpressionScope, at: Pos
+    ) = scope.onCall(values[0].requireOrNull<ObjectValue>(), member, values.subList(1, values.size), pos)
 
 }
 class RangeExpression(val start: Expression, val end: Expression, val inclusive: Boolean, pos: Pos): Expression(pos) {
     override fun argCount(): Int = 2
     override fun get(index: Int, previous: List<Value>): Expression = if(index == 0) start else end
     override fun mergeValues(
-        values: List<Value>, lookup: (String) -> Value?, onValue: (Value) -> Unit,
-        onCall: (ObjectValue?, String, List<Value>, Pos) -> Unit, at: Pos
+        values: List<Value>, scope: DfsRuntime.IExpressionScope, at: Pos
     ) {
         val start = values[0].require<IntValue>("int", at).value
         val end = values[1].require<IntValue>("int", at).value
-        onValue(RangeValue(start, if(inclusive) end else end - 1, at))
+        scope.onValue(RangeValue(start, if(inclusive) end else end - 1, at))
     }
 
 }
@@ -268,10 +257,9 @@ class MappedIntExpression(val target: Expression, val map: (IntValue) -> Value, 
     override fun argCount(): Int = 1
     override fun get(index: Int, previous: List<Value>): Expression = target
     override fun mergeValues(
-        values: List<Value>, lookup: (String) -> Value?, onValue: (Value) -> Unit,
-        onCall: (ObjectValue?, String, List<Value>, Pos) -> Unit, at: Pos
+        values: List<Value>, scope: DfsRuntime.IExpressionScope, at: Pos
     ) {
         val target = values[0].require<IntValue>("int", at)
-        onValue(map(target))
+        scope.onValue(map(target))
     }
 }

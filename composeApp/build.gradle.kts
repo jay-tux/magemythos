@@ -38,14 +38,15 @@ kotlin {
                 implementation(libs.arrow)
                 implementation(compose.runtime)
                 implementation(compose.foundation)
-//                implementation(compose.material)
                 implementation(libs.compose.material3)
+                implementation(libs.compose.icons.extended)
                 implementation(compose.ui)
                 implementation(compose.components.resources)
                 implementation(libs.antlr)
                 implementation(libs.filepicker)
                 implementation(libs.kotlinx.serialization.json)
                 implementation(libs.apache.commonslang)
+                implementation(libs.android.coro)
             }
         }
         desktopMain.dependencies {

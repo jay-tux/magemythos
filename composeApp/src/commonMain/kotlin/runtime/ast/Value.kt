@@ -1,6 +1,7 @@
 package runtime.ast
 
 import runtime.ConversionError
+import runtime.DfsRuntime
 import runtime.ImmutableError
 import runtime.RuntimeInternalError
 import runtime.Type
@@ -163,6 +164,6 @@ class Variable(val name: String, value: Value, val mutable: Boolean, val pos: Po
         }
 
     companion object {
-        fun GlobalDeclaration.toVariable(): Variable = TODO()
+        suspend fun GlobalDeclaration.toVariable(): Variable = Variable(name, DfsRuntime.evaluate(value, pos), false, pos)
     }
 }

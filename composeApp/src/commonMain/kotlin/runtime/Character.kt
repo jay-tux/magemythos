@@ -32,13 +32,21 @@ class Character(private val choices: MutableMap<String, Value>) {
                 else -> throw IllegalStateException("Invalid state")
             }.also { state++ }
 
-            suspend fun run(onChoice: (ChoiceDesc) -> Unit) {
+            suspend fun run(onChoice: suspend (ChoiceDesc) -> Unit) {
+                Runtime.getLogger().logMessage(" -> Running creation (is continuation? ${DfsRuntime.isRunning()})")
                 if(DfsRuntime.isRunning()) {
-                    val temp = DfsRuntime.getInstance().runUntilChoice()
-                    temp.leftOrNull()?.let(onChoice) ?: run(onChoice)
+                    val temp = DfsRuntime.getInstance().runUntilChoice().leftOrNull()
+                    if(temp != null) {
+                        onChoice(temp)
+                    }
+                    else {
+                        run(onChoice)
+                    }
                 }
                 else {
-                    DfsRuntime.ready(selector(), "onGain", listOf(), runtimePos)
+                    Runtime.getLogger().logMessage("   -> Starting runtime with next selector")
+                    DfsRuntime.ready(selector().also { Runtime.getLogger().logMessage("      -> Next selector is of type ${it.type::class.java.simpleName}") }, "onGain", listOf(), runtimePos)
+                    run(onChoice)
                 }
             }
 

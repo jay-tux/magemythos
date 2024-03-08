@@ -591,7 +591,7 @@ class AstBuilder(private val sourceFile: String) : MMBaseVisitor<Node>() {
             return declarations
         }
 
-        fun loadWithDeps(source: String, file: String, provider: Provider) {
+        suspend fun loadWithDeps(source: String, file: String, provider: Provider) {
             val output = Runtime.getCache()
             val deps = mutableListOf<Pair<String, String>>()
             val data: MutableMap<String, Declaration> = mutableMapOf()
@@ -627,7 +627,7 @@ class AstBuilder(private val sourceFile: String) : MMBaseVisitor<Node>() {
         }
 
         @OptIn(ExperimentalSerializationApi::class)
-        fun loadEntireCache(cacheDir: String, getStream: (String) -> InputStream) {
+        suspend fun loadEntireCache(cacheDir: String, getStream: (String) -> InputStream) {
             val output = Runtime.getCache()
             val strm = getStream("$cacheDir/cache.json")
             val map = Json.decodeFromStream<Map<String, List<String>>>(strm)

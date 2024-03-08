@@ -52,6 +52,11 @@ sealed class Type(val name: String, fields: List<MemberDeclaration>, members: Li
         if(!::description.isInitialized) throw MissingDescriptionError(mkScope().kind(), name, pos)
     }
 
+    fun construct(at: Pos): ObjectValue {
+        if(fields.isNotEmpty()) throw ArbitraryRuntimeError("Unable to construct values of type $name: member fields are unsupported (at $at)")
+        return ObjectValue(this, mutableMapOf(), at)
+    }
+
     private fun mkVariable(it: Pair<MemberDeclaration, Value>) = it.first.name to Variable(it.first.name, it.second, true, it.second.pos)
 
     interface TagScope {
@@ -93,7 +98,7 @@ sealed class Type(val name: String, fields: List<MemberDeclaration>, members: Li
         override fun hasDesc(): Boolean = this@Type::description.isInitialized
     }
 
-    fun finalize() {
+    suspend fun finalize() {
         if(state == State.WAITING) {
             state = State.FINALIZING
             val scope = mkScope()

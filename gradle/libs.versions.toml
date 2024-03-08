@@ -35,12 +35,14 @@ compose-ui-tooling = { module = "androidx.compose.ui:ui-tooling", version.ref = 
 compose-ui-tooling-preview = { module = "androidx.compose.ui:ui-tooling-preview", version.ref = "compose" }
 compose-foundation = { module = "androidx.compose.foundation:foundation", version.ref = "compose" }
 compose-material3 = { module = "androidx.compose.material3:material3", version = "1.2.0" }
+compose-icons-extended = { module = "androidx.compose.material:material-icons-extended", version = "1.6.3" }
 antlr = { group = "org.antlr", name = "antlr4", version = "4.13.1" }
 filepicker =  { module = "com.darkrockstudios:mpfilepicker", version = "3.1.0" }
 androidx-material3-desktop = { group = "org.jetbrains.compose.material3", name = "material3-desktop", version = "1.5.12" }
 appdirs = { module = "net.harawata:appdirs", version = "1.2.2" }
 kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version = "1.6.0" }
 apache-commonslang = { module = "org.apache.commons:commons-lang3", version = "3.14.0" }
+android-coro = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-android", version = "1.7.3" }
 
 [plugins]
 androidApplication = { id = "com.android.application", version.ref = "agp" }

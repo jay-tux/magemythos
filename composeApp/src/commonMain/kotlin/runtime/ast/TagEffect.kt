@@ -6,6 +6,7 @@ import runtime.Background
 import runtime.ChoiceScope
 import runtime.Class
 import runtime.Damage
+import runtime.DfsRuntime
 import runtime.ICache
 import runtime.Instantaneous
 import runtime.IntOrRoll.Companion.toIOR
@@ -26,19 +27,19 @@ import runtime.Type
 import runtime.TypeError
 import runtime.Weapon
 
-class TagEffect(private val name: String, private val argCount: Int, private val onApply: TagEffect.(Type.TagScope, List<Expression>, Pos) -> Unit) {
+class TagEffect(private val name: String, private val argCount: Int, private val onApply: suspend TagEffect.(Type.TagScope, List<Expression>, Pos) -> Unit) {
     private fun checkArgCount(args: List<Expression>, at: Pos) {
         if (args.size != argCount) {
             throw TagArgumentError(name, argCount, args.size, at)
         }
     }
 
-    fun apply(scope: Type.TagScope, args: List<Expression>, at: Pos) {
+    suspend fun apply(scope: Type.TagScope, args: List<Expression>, at: Pos) {
         checkArgCount(args, at)
         onApply(scope, args, at)
     }
 
-    private fun evaluate(e: Expression): Value = TODO()
+    private suspend fun evaluate(e: Expression): Value = DfsRuntime.evaluate(e, e.pos)
 
     private object Tags {
         val name = TagEffect("@name", 1) { scope, args, _ ->
@@ -560,7 +561,7 @@ class TagEffect(private val name: String, private val argCount: Int, private val
             yield(Tags.feature); yield(Tags.bgEquip)
         }.associateBy { it.name }
 
-        fun applyTag(
+        suspend fun applyTag(
             scope: Type.TagScope,
             name: String,
             args: List<Expression>,

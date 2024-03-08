@@ -34,25 +34,27 @@ fun App(local: LocalStorage, cache: ICache, logger: ILogger) {
         var ast by remember { mutableStateOf<Ast?>(null) }
         var error by remember { mutableStateOf<Exception?>(null) }
         var path by remember { mutableStateOf("") }
+        val scope = rememberCoroutineScope()
 
         val runLoad = {
-            val base = path.split('/').dropLast(2).joinToString("/")
-            try {
-                AstBuilder.loadWithDeps(
-                    source = path.split('/').dropLast(1).last(),
-                    file = path.split('/').last().split('.')[0]
-                ) { src, file ->
-                    println("[Provider]: $src($file) -> $base/$src/$file.mm")
-                    Streams(
-                        File("$base/$src/$file.mm").inputStream(),
-                        File("$base/$src/$file.mmstr").inputStream()
-                    )
+            scope.launch {
+                val base = path.split('/').dropLast(2).joinToString("/")
+                try {
+                    AstBuilder.loadWithDeps(
+                        source = path.split('/').dropLast(1).last(),
+                        file = path.split('/').last().split('.')[0]
+                    ) { src, file ->
+                        println("[Provider]: $src($file) -> $base/$src/$file.mm")
+                        Streams(
+                            File("$base/$src/$file.mm").inputStream(),
+                            File("$base/$src/$file.mmstr").inputStream()
+                        )
+                    }
+                } catch (e: Exception) {
+                    error = e
+                    println(e)
+                    e.printStackTrace()
                 }
-            }
-            catch (e: Exception) {
-                error = e
-                println(e)
-                e.printStackTrace()
             }
         }
 

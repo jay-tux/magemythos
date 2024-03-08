@@ -41,6 +41,8 @@ class ArgumentCountError(name: String, got: Int, required: Int, pos: Pos) :
 class ScopeException(call: String, pos: Pos) :
         RuntimeError("Library function $call requires a character scope, none available at $pos")
 
+class ChoiceDisabledException(pos: Pos) : RuntimeError("Choice-related functions are not allowed here; at $pos")
+
 class ConversionError(from: String, to: String, pos: Pos) :
         RuntimeError("Cannot convert from $from to $to at $pos")
 
@@ -52,3 +54,5 @@ class ChoiceException(required: Int, got: Int, pos: Pos) :
 
 class NoFunctionError(name: String, pos: Pos) :
         RuntimeError("Function '$name' does not exist at $pos")
+
+class ArbitraryRuntimeError(message: String) : RuntimeError(message)
