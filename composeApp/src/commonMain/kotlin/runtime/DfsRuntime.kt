@@ -296,6 +296,7 @@ class DfsRuntime private constructor(val at: Pos) {
 
         choice?.left() ?: run {
             Library.choice = null
+            Library.character = null
             instance = null
             exprResult.right()
         }
@@ -314,8 +315,9 @@ class DfsRuntime private constructor(val at: Pos) {
 
         fun getInstance(): DfsRuntime = instance ?: throw IllegalStateException("No runtime available")
 
-        fun ready(thisObj: ObjectValue? = null, invocationTarget: String, args: List<Value> = listOf(), at: Pos) {
+        fun ready(thisObj: ObjectValue? = null, invocationTarget: String, args: List<Value> = listOf(), at: Pos, character: Character? = null) {
             if(instance != null) throw IllegalStateException("Runtime already started")
+            Library.character = character
             instance = DfsRuntime(thisObj, invocationTarget, args, at)
         }
 

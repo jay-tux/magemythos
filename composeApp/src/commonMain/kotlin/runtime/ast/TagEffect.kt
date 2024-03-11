@@ -94,7 +94,7 @@ class TagEffect(private val name: String, private val argCount: Int, private val
                     "__it", args[0], listOf(
                         ExprStmt(
                             CallExpression(
-                                "asi", listOf(
+                                "applyASI", listOf(
                                     IndexExpression(
                                         VariableExpression("__it", at),
                                         LiteralExpression(IntValue(0, at), at),
@@ -130,7 +130,7 @@ class TagEffect(private val name: String, private val argCount: Int, private val
             val member = listOf(
                 ExprStmt(
                     CallExpression(
-                        "addLanguage", listOf(
+                        "addLanguages", listOf(
                             args[0]
                         ), at
                     ),
@@ -280,7 +280,7 @@ class TagEffect(private val name: String, private val argCount: Int, private val
             scope.appendOrCreateMember("onLevelUp", listOf(
                 ExprStmt(
                     CallExpression(
-                        "setDesc", listOf(
+                        "setDesc", listOf( // TODO!
                             args[0]
                         ), at
                     ),
@@ -300,7 +300,7 @@ class TagEffect(private val name: String, private val argCount: Int, private val
                 "onSelect", listOf(
                     ExprStmt(
                         CallExpression(
-                            "addArmorProficiencies", listOf(
+                            "addItemProfs", listOf(
                                 args[0]
                             ), at
                         ),
@@ -315,7 +315,7 @@ class TagEffect(private val name: String, private val argCount: Int, private val
                 "onSelect", listOf(
                     ExprStmt(
                         CallExpression(
-                            "addWeaponProficiencies", listOf(
+                            "addItemProfs", listOf(
                                 args[0]
                             ), at
                         ),
@@ -330,7 +330,7 @@ class TagEffect(private val name: String, private val argCount: Int, private val
                 "onSelect", listOf(
                     ExprStmt(
                         CallExpression(
-                            "addToolProficiencies", listOf(
+                            "addItemProfs", listOf(
                                 args[0]
                             ), at
                         ),
@@ -345,7 +345,7 @@ class TagEffect(private val name: String, private val argCount: Int, private val
                 "onSelect", listOf(
                     ExprStmt(
                         CallExpression(
-                            "addSaveProficiencies", listOf(
+                            "addSaveProfs", listOf(
                                 args[0]
                             ), at
                         ),
@@ -360,9 +360,11 @@ class TagEffect(private val name: String, private val argCount: Int, private val
                 "onSelect", listOf(
                     ExprStmt(
                         CallExpression(
-                            "addSkillProficiencies", listOf(
+                            "addSkillProfs", listOf(
                                 CallExpression(
                                     "chooseN", listOf(
+                                        LiteralExpression(StringValue("___TODO___", at), at), // TODO: somehow generate unique yet re-generate-able name
+                                        LiteralExpression(StringValue("You can choose some skill proficiencies", at), at),
                                         args[0],
                                         args[1]
                                     ),
@@ -408,6 +410,7 @@ class TagEffect(private val name: String, private val argCount: Int, private val
                     )
                 ), listOf("level")
             )
+            // TODO: not correct, should be lazily evaluated (only n-th entry)!
         }
 
         val reaction = TagEffect("@reaction", 2) { scope, args, at ->
@@ -488,7 +491,7 @@ class TagEffect(private val name: String, private val argCount: Int, private val
             scope.requireScope<Background.BackgroundTagScope>(this, at).appendOrCreateMember("onSelect", listOf(
                 ExprStmt(
                     CallExpression(
-                        "addSkillProficiencies", listOf(
+                        "addSkillProfs", listOf(
                             args[0]
                         ), at
                     ),

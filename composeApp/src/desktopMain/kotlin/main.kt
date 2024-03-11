@@ -47,7 +47,7 @@ enum class BottomTab(val show: String) {
     NONE(""), CONSOLE("Console")
 }
 
-fun onChoice(scope: CoroutineScope, builder: Character.Companion.Builder?, onFail: () -> Unit, modState: (ChoiceDesc, suspend (List<Value>) -> Unit) -> Unit) {
+fun onChoice(scope: CoroutineScope, builder: Character.Builder?, onFail: () -> Unit, modState: (ChoiceDesc, suspend (List<Value>) -> Unit) -> Unit) {
     scope.launch {
         try {
             builder?.run { choice ->
@@ -80,7 +80,7 @@ fun mainView(cache: DesktopCache) = Surface {
     var choicePost by remember { mutableStateOf<suspend (List<Value>) -> Unit>({}) }
 
     val scope = rememberCoroutineScope()
-    var builder by remember { mutableStateOf<Character.Companion.Builder?>(null) }
+    var builder by remember { mutableStateOf<Character.Builder?>(null) }
     val continueBuilder = {
         Runtime.getLogger().logMessage(" -> Continuing character builder...")
         onChoice(scope, builder, { choice = null; builder = null }, { c, post ->
@@ -176,7 +176,7 @@ fun mainView(cache: DesktopCache) = Surface {
 
     if(creationOpened) {
         CharacterCreationDialog({ creationOpened = false }, { n, r, sr, c, b ->
-            builder = Character.Companion.Builder(n, r, sr, c, b)
+            builder = Character(n, r, sr, c, b).Builder()
             continueBuilder()
         })
     }

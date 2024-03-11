@@ -1,5 +1,10 @@
+import androidx.compose.runtime.MutableState
+import androidx.compose.runtime.Recomposer
+import androidx.compose.runtime.State
+
 fun <T> MutableList<T>.immutable(): List<T> = this
 fun <K, V> MutableMap<K, V>.immutable(): Map<K, V> = this
+fun <T> MutableState<T>.immutable(): State<T> = this
 
 interface ImmutableRef<T> {
     fun get(): T

@@ -8,6 +8,10 @@ import runtime.Type
 
 sealed class Value(val pos: Pos) {
     inline fun <reified T: Value> require(desc: String, at: Pos): T = convertTo<T>(at)
+    inline fun <reified T: Type> requireObject(desc: String, at: Pos): T = require<ObjectValue>("$desc object", at).let {
+        if(it.type is T) it.type as T
+        else throw InvalidObjectTypeError(desc, it.type.name, at)
+    }
     inline fun <reified T: Value> requireOrNull(): T? = this as? T
 
     fun noConversion(what: String, at: Pos): Nothing =
