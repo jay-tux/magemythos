@@ -114,8 +114,8 @@ class TagEffect(private val name: String, private val argCount: Int, private val
             )
 
             when(scope) {
-                is Race.RaceTagScope -> scope.appendOrCreateMember("onGain", member)
-                is Subrace.SubraceTagScope -> scope.appendOrCreateMember("onGain", member)
+                is Race.RaceTagScope -> scope.appendOrCreateMember("onSelect", member)
+                is Subrace.SubraceTagScope -> scope.appendOrCreateMember("onSelect", member)
                 else -> throw TagInvalidReceiverError(name, scope.kind(), at)
             }
         }
@@ -139,10 +139,10 @@ class TagEffect(private val name: String, private val argCount: Int, private val
             )
             when(scope) {
                 is Race.RaceTagScope -> scope.appendOrCreateMember(
-                    "onGain", member
+                    "onSelect", member
                 )
                 is Subrace.SubraceTagScope -> scope.appendOrCreateMember(
-                    "onGain", member
+                    "onSelect", member
                 )
                 else -> throw TagInvalidReceiverError(name, scope.kind(), at)
             }
@@ -161,10 +161,10 @@ class TagEffect(private val name: String, private val argCount: Int, private val
             )
             when(scope) {
                 is Race.RaceTagScope -> scope.appendOrCreateMember(
-                    "onGain", member
+                    "onSelect", member
                 )
                 is Subrace.SubraceTagScope -> scope.appendOrCreateMember(
-                    "onGain", member
+                    "onSelect", member
                 )
                 is Subclass.SubclassTagScope -> scope.setTraits(
                     evaluate(args[0]).require<ListValue>("list", args[0].pos)

@@ -11,7 +11,7 @@ import runtime.ast.Value
 import runtime.ast.VoidValue
 
 fun checkArgCount(name: String, args: List<Value>, expected: Int, at: Pos) {
-    if(args.size != expected) throw ArgumentCountError(name, expected, args.size, at)
+    if(args.size != expected) throw ArgumentCountError(name, args.size, expected, at)
 }
 
 fun print(args: List<Value>): Value {

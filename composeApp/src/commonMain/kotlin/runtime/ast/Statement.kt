@@ -1,6 +1,7 @@
 package runtime.ast
 
 import runtime.DfsRuntime
+import runtime.Runtime
 import runtime.RuntimeInternalError
 import runtime.TypeError
 
@@ -10,6 +11,7 @@ sealed class Statement(pos: Pos) : Node(pos) {
 
 class ExprStmt(val expr: Expression, pos: Pos) : Statement(pos) {
     override fun mkState(): DfsRuntime.IStatementState = object : DfsRuntime.IStatementState {
+        override val stmt: Statement = this@ExprStmt
         private var ran = false
         override fun isFinished(): Boolean = ran
         override fun step(scope: DfsRuntime.IStatementScope) {
@@ -22,6 +24,7 @@ class ExprStmt(val expr: Expression, pos: Pos) : Statement(pos) {
 enum class DeclarationType { ASSIGN, VAR, CONST }
 class AssignmentStmt(val name: String, val expr: Expression, val type: DeclarationType, pos: Pos) : Statement(pos) {
     override fun mkState(): DfsRuntime.IStatementState = object : DfsRuntime.IStatementState {
+        override val stmt: Statement = this@AssignmentStmt
         private lateinit var result: Value
         private var ran = false
 
@@ -42,6 +45,7 @@ class AssignmentStmt(val name: String, val expr: Expression, val type: Declarati
 }
 class IfStmt(val condition: Expression, val bodyTrue: List<Statement>, val bodyFalse: List<Statement>?, pos: Pos) : Statement(pos) {
     override fun mkState(): DfsRuntime.IStatementState = object : DfsRuntime.IStatementState {
+        override val stmt: Statement = this@IfStmt
         private var ran = false
         private var result: Boolean? = null
 
@@ -62,6 +66,7 @@ class IfStmt(val condition: Expression, val bodyTrue: List<Statement>, val bodyF
 }
 class WhileStmt(val condition: Expression, val body: List<Statement>, pos: Pos) : Statement(pos) {
     override fun mkState(): DfsRuntime.IStatementState = object : DfsRuntime.IStatementState {
+        override val stmt: Statement = this@WhileStmt
         // 0 -> 1: eval condition
         // 1 -> 2: condition true
         // 1 -> 3: condition false
@@ -91,13 +96,14 @@ class WhileStmt(val condition: Expression, val body: List<Statement>, pos: Pos) 
 }
 class ForStmt(val name: String, val set: Expression, val body: List<Statement>, pos: Pos) : Statement(pos) {
     override fun mkState(): DfsRuntime.IStatementState = object : DfsRuntime.IStatementState {
+        override val stmt: Statement = this@ForStmt
         // 0 -> 1: eval set
         // 1 -> 1: set is non-empty, run body
         // 1 -> 2: set is empty
         private var state = 0
         private lateinit var setIter: Iterator<Value>
 
-        override fun isFinished(): Boolean = state == 3
+        override fun isFinished(): Boolean = state == 2
         override fun step(scope: DfsRuntime.IStatementScope) {
             when(state) {
                 0 -> { scope.onExpr(set); state = 1 }
@@ -105,16 +111,24 @@ class ForStmt(val name: String, val set: Expression, val body: List<Statement>, 
                     if(setIter.hasNext()) {
                         val value = setIter.next()
                         scope.onMkLoop(body, mapOf(name to value), pos)
-                    } else state = 2
+                    } else {
+                        state = 2
+                    }
                 }
-                2 -> { throw RuntimeInternalError("For loop continued past end point.") }
+                2 -> {
+                    throw RuntimeInternalError("For loop continued past end point.")
+                }
             }
         }
         override fun onValue(v: Value) {
             if(!::setIter.isInitialized) {
                 setIter = when(v) {
-                    is ListValue -> v.value.iterator()
-                    is RangeValue -> (v.start..v.endIncl).map { IntValue(it, pos) }.iterator()
+                    is ListValue -> {
+                        v.value.iterator()
+                    }
+                    is RangeValue -> {
+                        (v.start..v.endIncl).map { IntValue(it, pos) }.iterator()
+                    }
                     else -> throw TypeError("iterable (list or range)", v, pos)
                 }
             }
@@ -127,6 +141,7 @@ class ForStmt(val name: String, val set: Expression, val body: List<Statement>, 
 }
 class ReturnStmt(val expr: Expression?, pos: Pos) : Statement(pos) {
     override fun mkState(): DfsRuntime.IStatementState = object : DfsRuntime.IStatementState {
+        override val stmt: Statement = this@ReturnStmt
         private lateinit var result: Value
         private var ran = false
         override fun isFinished(): Boolean = ran
@@ -150,6 +165,7 @@ class ReturnStmt(val expr: Expression?, pos: Pos) : Statement(pos) {
 }
 class BreakStmt(pos: Pos) : Statement(pos) {
     override fun mkState(): DfsRuntime.IStatementState = object : DfsRuntime.IStatementState {
+        override val stmt: Statement = this@BreakStmt
         private var ran = false
         override fun isFinished(): Boolean = ran
         override fun step(scope: DfsRuntime.IStatementScope) {

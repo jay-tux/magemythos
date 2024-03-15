@@ -2,6 +2,7 @@ package runtime
 
 import androidx.compose.runtime.mutableStateOf
 import immutable
+import runtime.DfsRuntime.Companion.CharacterOrHelpers.Companion.prepare
 import runtime.ast.ObjectValue
 import runtime.ast.Pos
 import runtime.ast.Value
@@ -201,6 +202,10 @@ class Character(
 
         suspend fun run(onChoice: suspend (ChoiceDesc) -> Unit) {
             Runtime.getLogger().logMessage(" -> Running creation (is continuation? ${DfsRuntime.isRunning()})")
+            if(state == 4) {
+                Runtime.getLogger().logWarning("   -> Creation already done")
+                return
+            }
             if(DfsRuntime.isRunning()) {
                 val temp = DfsRuntime.getInstance().runUntilChoice().leftOrNull()
                 if(temp != null) {
@@ -211,8 +216,9 @@ class Character(
                 }
             }
             else {
-                Runtime.getLogger().logMessage("   -> Starting runtime with next selector")
-                DfsRuntime.ready(selector(), "onGain", listOf(), runtimePos, this@Character)
+                val sel = selector()
+                Runtime.getLogger().logMessage("   -> Starting runtime with next selector (${sel.type.name})")
+                DfsRuntime.ready(sel, "onSelect", listOf(), runtimePos, this@Character.prepare())
                 run(onChoice)
             }
         }

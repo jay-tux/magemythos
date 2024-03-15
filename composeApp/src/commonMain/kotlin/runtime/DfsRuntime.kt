@@ -17,9 +17,11 @@ import runtime.ast.VoidValue
 class DfsRuntime private constructor(val at: Pos) {
     class ExecutionFailure(cause: Exception) : Exception(cause)
 
-    private constructor(thisObj: ObjectValue?, invocationTarget: String, args: List<Value>, at: Pos) : this(at) {
+    private constructor(thisObj: ObjectValue?, invocationTarget: String, args: List<Value>, at: Pos, getChoice: (String) -> Value?, makeChoice: (String, Value) -> Unit) : this(at) {
         if(maybePushFrame(thisObj, invocationTarget, args, at)) {
             Library.choice = object : ChoiceScope {
+                override fun getChoice(name: String): Value? = getChoice(name)
+                override fun choiceMade(name: String, result: Value) = makeChoice(name, result)
                 override fun invoke(what: ChoiceDesc) {
                     choice = what
                 }
@@ -32,6 +34,8 @@ class DfsRuntime private constructor(val at: Pos) {
         val stmt = ReturnStmt(expr, at)
         Stack.push(StmtEntry(stmt.mkState(), at))
         Library.choice = object : ChoiceScope {
+            override fun getChoice(name: String): Value? = null
+            override fun choiceMade(name: String, result: Value) = Unit
             override fun invoke(what: ChoiceDesc) {
                 throw ChoiceDisabledException(what.requiredAt)
             }
@@ -48,6 +52,7 @@ class DfsRuntime private constructor(val at: Pos) {
     }
 
     interface IStatementState {
+        val stmt: Statement
         fun isFinished(): Boolean
         fun step(scope: IStatementScope)
         fun onValue(v: Value)
@@ -127,9 +132,25 @@ class DfsRuntime private constructor(val at: Pos) {
 
         fun buildTrace(): String {
             val trace = mutableListOf<Pos>()
-            trace.add(stack.last().pos)
-            frames.asReversed().forEach { if(it != stack.size - 1) trace.add(stack[it].pos) }
+            if(stack.isNotEmpty()) {
+                trace.add(stack.last().pos)
+                frames.asReversed().forEach { if (it != stack.size - 1) trace.add(stack[it].pos) }
+            }
             return trace.joinToString("\n") { "\tat $it" }
+        }
+
+        fun dump() {
+            Runtime.getLogger().logMessage("----------")
+            stack.forEach {
+                when(it) {
+                    is ExprEntry -> Runtime.getLogger().logMessage("[STACK_DUMP]: Expression: ${it.expr}@${it.pos} (progress: ${it.progress.size}/${it.expr.argCount()})")
+                    is BlockEntry -> Runtime.getLogger().logMessage("[STACK_DUMP]: Block: ${it.context.size} locals @${it.pos}")
+                    is FrameEntry -> Runtime.getLogger().logMessage("[STACK_DUMP]: Frame: ${it.context.size} locals @${it.pos}")
+                    is LoopEntry -> Runtime.getLogger().logMessage("[STACK_DUMP]: Loop: ${it.context.size} locals @${it.pos}")
+                    is StmtEntry -> Runtime.getLogger().logMessage("[STACK_DUMP]: Statement: ${it.state::class.simpleName}@${it.pos} (finished? ${it.state.isFinished()})")
+                }
+            }
+            Runtime.getLogger().logMessage("----------")
         }
     }
 
@@ -224,9 +245,18 @@ class DfsRuntime private constructor(val at: Pos) {
 
     private fun onValue(v: Value) {
         when(val top = Stack.peek()) {
-            is ExprEntry -> top.progress.add(v)
-            is StmtEntry -> top.state.onValue(v)
-            else -> exprResult = v
+            is ExprEntry -> {
+//                Runtime.getLogger().logMessage("[RT_VALUE]: Value provided ($v); expression (${top.expr}@${top.pos}) at top")
+                top.progress.add(v)
+            }
+            is StmtEntry -> {
+//                Runtime.getLogger().logMessage("[RT_VALUE]: Value provided ($v); statement at top")
+                top.state.onValue(v)
+            }
+            else -> {
+//                Runtime.getLogger().logMessage("[RT_VALUE]: Value provided ($v); other at top")
+                exprResult = v
+            }
         }
     }
 
@@ -254,15 +284,18 @@ class DfsRuntime private constructor(val at: Pos) {
     private fun stepFrame(f: FrameEntry) {
 //        Runtime.getLogger().logMessage("Stepping into frame@${f.pos} (#locals: ${f.context.size})")
         Stack.pop()
-        val next = Stack.peek()
-        if(next is ExprEntry) {
-            next.progress.add(exprResult)
-            exprResult = VoidValue(at)
+        if(!Stack.isEmpty()) {
+            val next = Stack.peek()
+            if (next is ExprEntry) {
+                next.progress.add(exprResult)
+                exprResult = VoidValue(at)
+            }
         }
     }
 
     fun provideChoice(result: Value) {
         onValue(result)
+        choice = null
     }
 
     private suspend fun <T> stackTraced(block: suspend () -> T): T {
@@ -278,7 +311,7 @@ class DfsRuntime private constructor(val at: Pos) {
             throw ExecutionFailure(e)
         }
         catch(e: Exception) {
-             Runtime.getLogger().logError("Unexpected JVM error during runtime:\n${e.message ?: "Unknown JVM error"}\n${Stack.buildTrace()}")
+             Runtime.getLogger().logError("Unexpected JVM error during runtime:\n${e.message ?: "Unknown JVM error"}\n${Stack.buildTrace()}\n\n${e.stackTrace.joinToString("\n")}")
             throw ExecutionFailure(e)
         }
     }
@@ -286,11 +319,21 @@ class DfsRuntime private constructor(val at: Pos) {
     suspend fun runUntilChoice(): Either<ChoiceDesc, Value> = stackTraced {
         while(!Stack.isEmpty() && choice == null) {
             when(val top = Stack.peek()) {
-                is ExprEntry -> stepExpr(top)
-                is StmtEntry -> stepStmt(top)
-                is FrameEntry -> stepFrame(top)
-                is BlockEntry -> Stack.pop()
-                is LoopEntry -> Stack.pop()
+                is ExprEntry -> {
+                    stepExpr(top)
+                }
+                is StmtEntry -> {
+                    stepStmt(top)
+                }
+                is FrameEntry -> {
+                    stepFrame(top)
+                }
+                is BlockEntry -> {
+                    Stack.pop()
+                }
+                is LoopEntry -> {
+                    Stack.pop()
+                }
             }
         }
 
@@ -315,10 +358,27 @@ class DfsRuntime private constructor(val at: Pos) {
 
         fun getInstance(): DfsRuntime = instance ?: throw IllegalStateException("No runtime available")
 
-        fun ready(thisObj: ObjectValue? = null, invocationTarget: String, args: List<Value> = listOf(), at: Pos, character: Character? = null) {
+        sealed class CharacterOrHelpers {
+            data class UsingCharacter(val c: Character) : CharacterOrHelpers()
+            data class UsingHelpers(val getChoice: (String) -> Value?, val makeChoice: (String, Value) -> Unit) : CharacterOrHelpers()
+
+            companion object {
+                fun Character.prepare(): CharacterOrHelpers = UsingCharacter(this)
+                fun fromFunctions(getChoice: (String) -> Value?, makeChoice: (String, Value) -> Unit): CharacterOrHelpers = UsingHelpers(getChoice, makeChoice)
+            }
+        }
+
+        fun ready(thisObj: ObjectValue? = null, invocationTarget: String, args: List<Value> = listOf(), at: Pos, helpers: CharacterOrHelpers) {
             if(instance != null) throw IllegalStateException("Runtime already started")
-            Library.character = character
-            instance = DfsRuntime(thisObj, invocationTarget, args, at)
+            when(helpers) {
+                is CharacterOrHelpers.UsingCharacter -> {
+                    Library.character = helpers.c
+                    instance = DfsRuntime(thisObj, invocationTarget, args, at, { helpers.c.retrieveChoice(it) }) { n, v -> helpers.c.registerChoice(n, v) }
+                }
+                is CharacterOrHelpers.UsingHelpers -> {
+                    instance = DfsRuntime(thisObj, invocationTarget, args, at, helpers.getChoice, helpers.makeChoice)
+                }
+            }
         }
 
         suspend fun evaluate(e: Expression, at: Pos): Value {

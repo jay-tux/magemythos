@@ -6,13 +6,12 @@ import runtime.library.*
 
 data class ChoiceDesc(val name: String, val title: String, val count: Int, val options: List<Value>, val requiredAt: Pos)
 interface ChoiceScope {
+    fun getChoice(name: String): Value?
     operator fun invoke(what: ChoiceDesc)
+    fun choiceMade(name: String, result: Value)
 }
 
 object Library {
-    private object Implementations {
-    }
-
     var character: Character? = null
     var choice: ChoiceScope? = null
 
@@ -57,6 +56,7 @@ object Library {
         "chooseLanguage" -> withChoices { withCharacter("chooseLanguage", at) { chooseLanguage(this, args, at) } }
         "chooseLanguages" -> withChoices { withCharacter("chooseLanguages", at) { chooseLanguages(this, args, at) } }
         "chooseItem" -> withChoices { chooseItem(args, at) }
+        "chooseItemN" -> withChoices { chooseItemN(args, at) }
         "chooseSpellN" -> withChoices { chooseSpellN(args, at) }
         "chooseSkillN" -> withChoices { chooseSkillN(args, at) }
         "chooseSpellFrom" -> withChoices { chooseSpellFrom(args, at) }

@@ -603,7 +603,6 @@ class AstBuilder(private val sourceFile: String) : MMBaseVisitor<Node>() {
                 if(already.contains(src to f)) continue
                 already.add(src to f)
 
-                println(" -> Loading $f from $src")
                 loadSingle(src, f, provider).forEach { (name, decl) ->
                     if(data.containsKey(name)) {
                         throw RedeclarationError(name, data[name]!!.pos, decl.pos)

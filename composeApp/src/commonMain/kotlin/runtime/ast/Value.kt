@@ -154,7 +154,7 @@ class VoidValue(pos: Pos) : Value(pos) {
     override fun typeName(): String = "void"
 }
 class ObjectValue(val type: Type, val value: Map<String, Variable>, pos: Pos) : Value(pos) {
-    override fun toString(): String = "{${value.entries.joinToString(", ") { (k, v) -> "$k: $v" }}}"
+    override fun toString(): String = "{[${type.name}]::${value.entries.joinToString(", ") { (k, v) -> "$k: $v" }}}"
     override fun equals(other: Any?): Boolean = other is ObjectValue && other.value == value
     override fun hashCode(): Int = (value to type to 3).hashCode()
     override fun typeName(): String = type.name

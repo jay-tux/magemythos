@@ -150,11 +150,15 @@ class LiteralExpression(val value: Value, pos: Pos): Expression(pos) {
     override fun argCount(): Int = 0
     override fun get(index: Int, previous: List<Value>): Expression = throw RuntimeInternalError("Literal expression has no children")
     override fun mergeValues(values: List<Value>, scope: DfsRuntime.IExpressionScope, at: Pos) = scope.onValue(value)
+
+    override fun toString(): String = "LiteralExpression(${value})"
 }
 class VariableExpression(val name: String, pos: Pos): Expression(pos) {
     override fun argCount(): Int = 0
     override fun get(index: Int, previous: List<Value>): Expression = throw RuntimeInternalError("Name expression has no children")
     override fun mergeValues(values: List<Value>, scope: DfsRuntime.IExpressionScope, at: Pos) = scope.onValue(scope.lookup(name, at) ?: throw VariableError(name, at))
+
+    override fun toString(): String = "VariableExpression(${name})"
 }
 class ListExpression(val values: List<Expression>, pos: Pos): RecursiveExpression(pos) {
     override fun argCount(): Int = values.size
@@ -164,6 +168,8 @@ class ListExpression(val values: List<Expression>, pos: Pos): RecursiveExpressio
     ) {
         scope.onValue(ListValue(values, at))
     }
+
+    override fun toString(): String = "ListExpression(${values.size})"
 }
 class CallExpression(val name: String, val args: List<Expression>, pos: Pos): Expression(pos) {
     override fun argCount(): Int = args.size
@@ -171,6 +177,8 @@ class CallExpression(val name: String, val args: List<Expression>, pos: Pos): Ex
     override fun mergeValues(
         values: List<Value>, scope: DfsRuntime.IExpressionScope, at: Pos
     ) = scope.onCall(null, name, values, pos)
+
+    override fun toString(): String = "CallExpression(${name} (${args.size} args))"
 }
 class UnaryExpression(val op: UnaryOperator, val target: Expression, pos: Pos): Expression(pos) {
     override fun argCount(): Int = 1
@@ -179,6 +187,7 @@ class UnaryExpression(val op: UnaryOperator, val target: Expression, pos: Pos): 
         values: List<Value>, scope: DfsRuntime.IExpressionScope, at: Pos
     ) = scope.onValue(op.withValue(values[0], at))
 
+    override fun toString(): String = "UnaryExpression(${op.repr()})"
 }
 class BinaryExpression(val op: BinaryOperator, val left: Expression, val right: Expression, pos: Pos): Expression(pos) {
     override fun argCount(): Int = 2
@@ -187,6 +196,7 @@ class BinaryExpression(val op: BinaryOperator, val left: Expression, val right: 
         values: List<Value>, scope: DfsRuntime.IExpressionScope, at: Pos
     ) = scope.onValue(op.withValues(values[0], values[1], at))
 
+    override fun toString(): String = "BinaryExpression(${op.repr()})"
 }
 class TernaryExpression(val cond: Expression, val bTrue: Expression, val bFalse: Expression, pos: Pos): Expression(pos) {
     override fun argCount(): Int = 2
@@ -198,6 +208,7 @@ class TernaryExpression(val cond: Expression, val bTrue: Expression, val bFalse:
         values: List<Value>, scope: DfsRuntime.IExpressionScope, at: Pos
     ) = scope.onValue(values[1])
 
+    override fun toString(): String = "TernaryExpression"
 }
 class IndexExpression(val target: Expression, val index: Expression, pos: Pos): Expression(pos) {
     override fun argCount(): Int = 2
@@ -222,6 +233,7 @@ class IndexExpression(val target: Expression, val index: Expression, pos: Pos): 
         }
     }
 
+    override fun toString(): String = "IndexExpression"
 }
 class MemberExpression(val target: Expression, val member: String, pos: Pos): Expression(pos) {
     override fun argCount(): Int = 1
@@ -232,6 +244,8 @@ class MemberExpression(val target: Expression, val member: String, pos: Pos): Ex
         val obj = values[0].require<ObjectValue>("object", at)
         scope.onValue(obj.value[member]?.value ?: throw FieldError(obj.type.name, member, at))
     }
+
+    override fun toString(): String = "MemberExpression(${member})"
 }
 class MemberCallExpression(val target: Expression, val member: String, val args: List<Expression>, pos: Pos): Expression(pos) {
     override fun argCount(): Int = args.size + 1
@@ -240,6 +254,7 @@ class MemberCallExpression(val target: Expression, val member: String, val args:
         values: List<Value>, scope: DfsRuntime.IExpressionScope, at: Pos
     ) = scope.onCall(values[0].requireOrNull<ObjectValue>(), member, values.subList(1, values.size), pos)
 
+    override fun toString(): String = "MemberCallExpression(${member} (${args.size} args))"
 }
 class RangeExpression(val start: Expression, val end: Expression, val inclusive: Boolean, pos: Pos): Expression(pos) {
     override fun argCount(): Int = 2
@@ -252,6 +267,7 @@ class RangeExpression(val start: Expression, val end: Expression, val inclusive:
         scope.onValue(RangeValue(start, if(inclusive) end else end - 1, at))
     }
 
+    override fun toString(): String = "RangeExpression"
 }
 class MappedIntExpression(val target: Expression, val map: (IntValue) -> Value, pos: Pos) : Expression(pos) {
     override fun argCount(): Int = 1
@@ -262,4 +278,6 @@ class MappedIntExpression(val target: Expression, val map: (IntValue) -> Value, 
         val target = values[0].require<IntValue>("int", at)
         scope.onValue(map(target))
     }
+
+    override fun toString(): String = "MappedIntExpression"
 }

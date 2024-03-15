@@ -51,16 +51,21 @@ fun onChoice(scope: CoroutineScope, builder: Character.Builder?, onFail: () -> U
     scope.launch {
         try {
             builder?.run { choice ->
-                Runtime.getLogger().logMessage("    -> Requires choice!")
+                Runtime.getLogger().logMessage("    -> Requires choice (${choice.name}; ${choice.options.size} options; make ${choice.count} choices)!")
                 modState(choice) { res: List<Value> ->
+                    val pass =
+                        if (res.size == 1) res[0]
+                        else  ListValue(res, Pos("<runtime::CreateCharacter>", 0, 0))
                     builder.provideChoice(
                         choice.name,
-                        if (choice.options.size == 1) res[0] else ListValue(
-                            res,
-                            Pos("<runtime::CreateCharacter>", 0, 0)
-                        )
+                        pass
                     )
-                    onChoice(scope, builder, onFail, modState)
+                    if(!builder.doneRunning()) {
+                        onChoice(scope, builder, onFail, modState)
+                    }
+                    else {
+                        Runtime.getLogger().logMessage("  -> Character finally finished!")
+                    }
                 }
             }
         } catch (e: DfsRuntime.ExecutionFailure) {
@@ -183,6 +188,8 @@ fun mainView(cache: DesktopCache) = Surface {
 
     choice?.let {
         ChoiceDialog(it.title, it.options, it.count) { res ->
+            choice = null
+            Runtime.getLogger().logMessage("Made a choice: ${it.name}")
             scope.launch { choicePost(res); choice = null }
         }
     }

@@ -4,6 +4,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
@@ -62,21 +64,28 @@ fun ChoiceDialogMultiple(
     var selected by remember { mutableStateOf(listOf<Int>()) }
 
     val onSelect = { it: Int ->
-        selected = if(selected.contains(it)) {
+        selected = if (selected.contains(it)) {
             selected.filter { i -> i != it }
-        } else if(selected.size < count) {
+        } else if (selected.size < count) {
             selected + it
         } else {
             selected.drop(1) + it
         }
     }
 
-    Dialog({}, properties = DialogProperties()) {
+    Dialog(
+        {}, properties = DialogProperties(
+            dismissOnBackPress = false,
+            dismissOnClickOutside = false,
+            usePlatformDefaultWidth = false
+        )
+    ) {
         Surface(Modifier.width(width).height(height).padding(5.dp)) {
             Column {
                 Text(title)
                 Text("Pick $count options", style = MaterialTheme.typography.bodySmall)
-                LazyColumn {
+                Spacer(Modifier.height(10.dp))
+                LazyColumn(Modifier.weight(1f)) {
                     itemsIndexed(options) { idx, it ->
                         Row(Modifier.clickable { onSelect(idx) }) {
                             RadioButton(
@@ -89,10 +98,14 @@ fun ChoiceDialogMultiple(
                         }
                     }
                 }
-                Spacer(Modifier.weight(1f))
-                Button({ onChoiceMade(selected.map { options[it] }) }, enabled = selected.size == count) {
+                Button(
+                    { onChoiceMade(selected.map { options[it] }) },
+                    Modifier.align(Alignment.CenterHorizontally).fillMaxWidth(0.8f),
+                    enabled = selected.size == count
+                ) {
                     Text("Confirm choices")
                 }
+                Spacer(Modifier.height(5.dp))
             }
         }
     }
@@ -109,15 +122,21 @@ fun ChoiceDialogSingle(
     var selected by remember { mutableStateOf(-1) }
 
     val onSelect = { idx: Int ->
-        selected = if(idx == selected) -1 else idx
+        selected = if (idx == selected) -1 else idx
     }
 
-    Dialog({}, properties = DialogProperties()) {
+    Dialog(
+        {}, properties = DialogProperties(
+            dismissOnBackPress = false,
+            dismissOnClickOutside = false,
+            usePlatformDefaultWidth = false
+        )
+    ) {
         Surface(Modifier.width(width).height(height).padding(5.dp)) {
             Column {
                 Text(title)
                 Text("Pick one", style = MaterialTheme.typography.bodySmall)
-                LazyColumn {
+                LazyColumn(Modifier.weight(1f)) {
                     itemsIndexed(options) { idx, it ->
                         Row(Modifier.clickable { onSelect(idx) }) {
                             RadioButton(
@@ -130,10 +149,15 @@ fun ChoiceDialogSingle(
                         }
                     }
                 }
-                Spacer(Modifier.weight(1f))
-                Button({ onChoiceMade(listOf(options[selected])) }, enabled = selected != -1) {
+
+                Button(
+                    { onChoiceMade(listOf(options[selected])) },
+                    Modifier.align(Alignment.CenterHorizontally).fillMaxWidth(0.8f),
+                    enabled = selected != -1
+                ) {
                     Text("Confirm choice")
                 }
+                Spacer(Modifier.height(5.dp))
             }
         }
     }
