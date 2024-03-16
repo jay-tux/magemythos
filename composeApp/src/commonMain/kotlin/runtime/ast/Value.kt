@@ -1,5 +1,6 @@
 package runtime.ast
 
+import kotlinx.serialization.json.JsonElement
 import runtime.ConversionError
 import runtime.DfsRuntime
 import runtime.ImmutableError
@@ -14,7 +15,7 @@ sealed class Value(val pos: Pos) {
     }
     inline fun <reified T: Value> requireOrNull(): T? = this as? T
 
-    fun noConversion(what: String, at: Pos): Nothing =
+    protected fun noConversion(what: String, at: Pos): Nothing =
         throw ConversionError(typeName(), what, at)
 
     fun convertToString(at: Pos): StringValue = StringValue(toString(), at)

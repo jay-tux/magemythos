@@ -17,6 +17,7 @@ interface ICache {
     fun typeIterator(): Iterator<Type>
     fun functionIterator(): Iterator<FunDeclaration>
     fun globalIterator(): Iterator<Variable>
+    fun characterIterator(): Iterator<Character>
 }
 
 inline fun <reified T : Type> ICache.typesOfKind(): List<T> = typeIterator().asSequence().filterIsInstance<T>().toList()

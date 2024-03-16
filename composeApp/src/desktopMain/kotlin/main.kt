@@ -55,7 +55,7 @@ fun onChoice(scope: CoroutineScope, builder: Character.Builder?, onFail: () -> U
                 modState(choice) { res: List<Value> ->
                     val pass =
                         if (res.size == 1) res[0]
-                        else  ListValue(res, Pos("<runtime::CreateCharacter>", 0, 0))
+                        else  ListValue(res, Pos("<runtime>", "<createCharacter>", 0, 0))
                     builder.provideChoice(
                         choice.name,
                         pass
@@ -171,7 +171,7 @@ fun mainView(cache: DesktopCache) = Surface {
             }
             Box {
                 Row(Modifier.padding(5.dp)) {
-                    loader(cache)
+                    loader(cache, cache)
                     Spacer(Modifier.width(5.dp))
                     cacheLoader(cache)
                 }
@@ -181,7 +181,7 @@ fun mainView(cache: DesktopCache) = Surface {
 
     if(creationOpened) {
         CharacterCreationDialog({ creationOpened = false }, { n, r, sr, c, b ->
-            builder = Character(n, r, sr, c, b).Builder()
+            builder = Character(n, r, sr, listOf(Character.CharacterClass(c, 1)), b).Builder()
             continueBuilder()
         })
     }
@@ -201,9 +201,7 @@ fun main() = application {
     Window(onCloseRequest = ::exitApplication, title = "MageMythos") {
         MageMythosTheme(true) {
             val scope = rememberCoroutineScope()
-            scope.launch {
-                loadCharacters(cache.characterCache(), cache, cache)
-            }
+            scope.launch { loadCharacters(cache) }
             mainView(cache)
         }
     }

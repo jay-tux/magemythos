@@ -1,13 +1,5 @@
 package runtime.ast
 
-import ILogger
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.material.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.ui.Modifier
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.decodeFromStream
@@ -18,25 +10,21 @@ import org.antlr.v4.runtime.ParserRuleContext
 import org.antlr.v4.runtime.RecognitionException
 import org.antlr.v4.runtime.Recognizer
 import org.antlr.v4.runtime.Token
-import runtime.ICache
+import runtime.ILoader
 import runtime.Runtime
 import runtime.Type.Companion.build
 import runtime.ast.Currency.Companion.toCurrencyOrNull
 import runtime.ast.DiceValue.Companion.toDiceOrNull
-import runtime.ast.RollValue.Companion.toRollOrNull
 import runtime.ast.Variable.Companion.toVariable
 import runtime.parser.MMBaseVisitor
 import runtime.parser.MMLexer
 import runtime.parser.MMParser
-import ui.indented
 import java.io.InputStream
-import java.util.Queue
 
 data class Streams(val source: InputStream, val description: InputStream)
-typealias Provider = (source: String, file: String) -> Streams
 
-fun ParserRuleContext.toPos(file: String): Pos = Pos(file, start.line, start.charPositionInLine)
-fun Token.toPos(file: String): Pos = Pos(file, line, charPositionInLine)
+fun ParserRuleContext.toPos(source: String, file: String): Pos = Pos(source, file, start.line, start.charPositionInLine)
+fun Token.toPos(source: String, file: String): Pos = Pos(source, file, line, charPositionInLine)
 
 inline fun <reified T, R> nonNull(v: T?, withT: (T) -> R): R = v?.let(withT) ?: throw NodeNullError(T::class.java)
 inline fun <reified T: Node> Node.require(): T = this as? T ?: throw InvalidNodeTypeError(T::class.java, this::class.java)
@@ -44,9 +32,9 @@ inline fun <reified T: Node> Node.require(): T = this as? T ?: throw InvalidNode
 inline fun <reified T> List<T?>.withNonNull(withT: (T) -> Unit): Unit = forEach { nonNull(it, withT) }
 inline fun <reified T, R> List<T?>.mapNonNull(withT: (T) -> R): List<R> = map { nonNull(it, withT) }
 
-class AntlrListener(val file: String) : BaseErrorListener() {
+class AntlrListener(val source: String, val file: String) : BaseErrorListener() {
     override fun syntaxError(recognizer: Recognizer<*, *>?, offendingSymbol: Any?, line: Int, charPositionInLine: Int, msg: String?, e: RecognitionException?) {
-        throw SyntaxError(msg ?: "Unknown error", Pos(file, line, charPositionInLine))
+        throw SyntaxError(msg ?: "Unknown error", Pos(source, file, line, charPositionInLine))
     }
 }
 
@@ -60,7 +48,7 @@ class HelperNodes {
     class ValueNode(val value: Value) : Node(value.pos)
 }
 
-class AstBuilder(private val sourceFile: String) : MMBaseVisitor<Node>() {
+class AstBuilder(private val source: String, private val file: String) : MMBaseVisitor<Node>() {
     private inline fun <reified T: Node> visitRequire(ctx: ParserRuleContext): T = visit(ctx).require<T>()
     private inline fun <reified T: Node> fullVisit(ctx: ParserRuleContext?): T = nonNull(ctx) { visitRequire<T>(it) }
     private inline fun <reified T: Node> List<ParserRuleContext?>.visitAll(): List<T> = map { fullVisit<T>(it) }
@@ -78,7 +66,7 @@ class AstBuilder(private val sourceFile: String) : MMBaseVisitor<Node>() {
                 else -> throw InvalidNodeTypeError(Declaration::class.java, temp::class.java)
             }
         }
-        Ast(preamble.source, preamble.deps, body, c.toPos(sourceFile))
+        Ast(preamble.source, preamble.deps, body, c.toPos(source, file))
     }
 
     override fun visitPreamble(ctx: MMParser.PreambleContext?): Node = nonNull(ctx) { c ->
@@ -92,7 +80,7 @@ class AstBuilder(private val sourceFile: String) : MMBaseVisitor<Node>() {
         HelperNodes.PreambleNode(
             c.ID().text,
             deps,
-            c.toPos(sourceFile)
+            c.toPos(source, file)
         )
     }
 
@@ -100,7 +88,7 @@ class AstBuilder(private val sourceFile: String) : MMBaseVisitor<Node>() {
         HelperNodes.ImportNode(
             nonNull(c.src) { it.text },
             visitRequire<HelperNodes.StringListNode>(c.idList()).values,
-            c.toPos(sourceFile)
+            c.toPos(source, file)
         )
     }
     //endregion
@@ -113,7 +101,7 @@ class AstBuilder(private val sourceFile: String) : MMBaseVisitor<Node>() {
             c.tags?.let { visitRequire<HelperNodes.ListNode<Tag>>(it).values } ?: listOf(),
             listOf(),
             listOf(),
-            c.toPos(sourceFile)
+            c.toPos(source, file)
         )
     }
 
@@ -126,7 +114,7 @@ class AstBuilder(private val sourceFile: String) : MMBaseVisitor<Node>() {
             c.tags?.let { visitRequire<HelperNodes.ListNode<Tag>>(it).values } ?: listOf(),
             body.filterIsInstance<MemberDeclaration>(),
             body.filterIsInstance<FunDeclaration>(),
-            c.toPos(sourceFile)
+            c.toPos(source, file)
         )
     }
 
@@ -141,10 +129,10 @@ class AstBuilder(private val sourceFile: String) : MMBaseVisitor<Node>() {
                     listOf(),
                     listOf(),
                     listOf(),
-                    l.toPos(sourceFile)
+                    l.toPos(source, file)
                 )
             }
-        }, c.toPos(sourceFile))
+        }, c.toPos(source, file))
     }
 
     override fun visitMultipleDecl(ctx: MMParser.MultipleDeclContext?): Node = nonNull(ctx) { c ->
@@ -159,10 +147,10 @@ class AstBuilder(private val sourceFile: String) : MMBaseVisitor<Node>() {
                     tags,
                     listOf(),
                     listOf(),
-                    l.toPos(sourceFile)
+                    l.toPos(source, file)
                 )
             }
-        }, c.toPos(sourceFile))
+        }, c.toPos(source, file))
     }
 
     override fun visitFunction(ctx: MMParser.FunctionContext?): Node = nonNull(ctx) {
@@ -187,7 +175,7 @@ class AstBuilder(private val sourceFile: String) : MMBaseVisitor<Node>() {
             nonNull(c.name) { it.text },
             fullVisit(c.expr()),
             false,
-            c.toPos(sourceFile)
+            c.toPos(source, file)
         )
     }
 
@@ -196,7 +184,7 @@ class AstBuilder(private val sourceFile: String) : MMBaseVisitor<Node>() {
             nonNull(c.name) { it.text },
             c.args?.let { visitRequire<HelperNodes.StringListNode>(it).values } ?: listOf(),
             c.body.visitAll(),
-            c.toPos(sourceFile)
+            c.toPos(source, file)
         )
     }
 
@@ -204,14 +192,14 @@ class AstBuilder(private val sourceFile: String) : MMBaseVisitor<Node>() {
         GlobalDeclaration(
             nonNull(c.name) { it.text },
             fullVisit(c.value),
-            c.toPos(sourceFile)
+            c.toPos(source, file)
         )
     }
 
     override fun visitTagList(ctx: MMParser.TagListContext?): Node = nonNull(ctx) { c ->
         HelperNodes.ListNode(
             c.tags.visitAll(),
-            c.toPos(sourceFile)
+            c.toPos(source, file)
         )
     }
 
@@ -219,7 +207,7 @@ class AstBuilder(private val sourceFile: String) : MMBaseVisitor<Node>() {
         Tag(
             nonNull(c.name) { it.text },
             listOf(),
-            c.toPos(sourceFile)
+            c.toPos(source, file)
         )
     }
 
@@ -227,7 +215,7 @@ class AstBuilder(private val sourceFile: String) : MMBaseVisitor<Node>() {
         Tag(
             nonNull(c.name) { it.text },
             c.args?.let { visitRequire<HelperNodes.ListNode<Expression>>(it).values } ?: listOf(),
-            c.toPos(sourceFile)
+            c.toPos(source, file)
         )
     }
     //endregion
@@ -237,7 +225,7 @@ class AstBuilder(private val sourceFile: String) : MMBaseVisitor<Node>() {
     override fun visitExprStmt(ctx: MMParser.ExprStmtContext?): Node = nonNull(ctx) { c ->
         ExprStmt(
             fullVisit(c.expr()),
-            c.toPos(sourceFile)
+            c.toPos(source, file)
         )
     }
 
@@ -246,7 +234,7 @@ class AstBuilder(private val sourceFile: String) : MMBaseVisitor<Node>() {
             nonNull(c.name) { it.text },
             fullVisit(c.value),
             DeclarationType.VAR,
-            c.toPos(sourceFile)
+            c.toPos(source, file)
         )
     }
 
@@ -255,7 +243,7 @@ class AstBuilder(private val sourceFile: String) : MMBaseVisitor<Node>() {
             nonNull(c.name) { it.text },
             fullVisit(c.value),
             DeclarationType.CONST,
-            c.toPos(sourceFile)
+            c.toPos(source, file)
         )
     }
 
@@ -264,7 +252,7 @@ class AstBuilder(private val sourceFile: String) : MMBaseVisitor<Node>() {
             nonNull(c.name) { it.text },
             fullVisit(c.value),
             DeclarationType.ASSIGN,
-            c.toPos(sourceFile)
+            c.toPos(source, file)
         )
     }
 
@@ -273,7 +261,7 @@ class AstBuilder(private val sourceFile: String) : MMBaseVisitor<Node>() {
             fullVisit(c.cond),
             c.body.visitAll(),
             null,
-            c.toPos(sourceFile)
+            c.toPos(source, file)
         )
     }
 
@@ -282,7 +270,7 @@ class AstBuilder(private val sourceFile: String) : MMBaseVisitor<Node>() {
             fullVisit(c.cond),
             c.bTrue.visitAll(),
             c.bFalse.visitAll(),
-            c.toPos(sourceFile)
+            c.toPos(source, file)
         )
     }
 
@@ -290,7 +278,7 @@ class AstBuilder(private val sourceFile: String) : MMBaseVisitor<Node>() {
         WhileStmt(
             fullVisit(c.cond),
             c.body.visitAll(),
-            c.toPos(sourceFile)
+            c.toPos(source, file)
         )
     }
 
@@ -299,38 +287,38 @@ class AstBuilder(private val sourceFile: String) : MMBaseVisitor<Node>() {
             nonNull(c.v) { it.text },
             fullVisit(c.set),
             c.body.visitAll(),
-            c.toPos(sourceFile)
+            c.toPos(source, file)
         )
     }
 
     override fun visitBreakStmt(ctx: MMParser.BreakStmtContext?): Node = nonNull(ctx) { c ->
-        BreakStmt(c.toPos(sourceFile))
+        BreakStmt(c.toPos(source, file))
     }
 
     override fun visitReturnStmt(ctx: MMParser.ReturnStmtContext?): Node = nonNull(ctx) { c ->
         ReturnStmt(
             c.e?.let { visitRequire(it) },
-            c.toPos(sourceFile)
+            c.toPos(source, file)
         )
     }
     //endregion
 
     //region Expressions
     override fun visitLiteralExpr(ctx: MMParser.LiteralExprContext?): Node = nonNull(ctx) { c ->
-        LiteralExpression(fullVisit<HelperNodes.ValueNode>(c.literal()).value, c.toPos(sourceFile))
+        LiteralExpression(fullVisit<HelperNodes.ValueNode>(c.literal()).value, c.toPos(source, file))
     }
 
     override fun visitNameExpr(ctx: MMParser.NameExprContext?): Node = nonNull(ctx) { c ->
         VariableExpression(
             c.ID().text,
-            c.toPos(sourceFile)
+            c.toPos(source, file)
         )
     }
 
     override fun visitListExpr(ctx: MMParser.ListExprContext?): Node = nonNull(ctx) { c ->
         ListExpression(
             c.exprs?.let { visitRequire<HelperNodes.ListNode<Expression>>(it).values } ?: listOf(),
-            c.toPos(sourceFile)
+            c.toPos(source, file)
         )
     }
 
@@ -338,7 +326,7 @@ class AstBuilder(private val sourceFile: String) : MMBaseVisitor<Node>() {
         CallExpression(
             c.ID().text,
             c.args?.let { visitRequire<HelperNodes.ListNode<Expression>>(it).values } ?: listOf(),
-            c.toPos(sourceFile)
+            c.toPos(source, file)
         )
     }
 
@@ -350,7 +338,7 @@ class AstBuilder(private val sourceFile: String) : MMBaseVisitor<Node>() {
         IndexExpression(
             fullVisit(c.base),
             fullVisit(c.index),
-            c.toPos(sourceFile)
+            c.toPos(source, file)
         )
     }
 
@@ -358,7 +346,7 @@ class AstBuilder(private val sourceFile: String) : MMBaseVisitor<Node>() {
         MemberExpression(
             fullVisit(c.base),
             nonNull(c.name) { it.text },
-            c.toPos(sourceFile)
+            c.toPos(source, file)
         )
     }
 
@@ -367,51 +355,51 @@ class AstBuilder(private val sourceFile: String) : MMBaseVisitor<Node>() {
             fullVisit(c.base),
             nonNull(c.name) { it.text },
             c.args?.let { visitRequire<HelperNodes.ListNode<Expression>>(it).values } ?: listOf(),
-            c.toPos(sourceFile)
+            c.toPos(source, file)
         )
     }
 
     override fun visitUnaryExpr(ctx: MMParser.UnaryExprContext?): Node = nonNull(ctx) { c ->
         UnaryExpression(
-            nonNull(c.op) { UnaryOperator.match(it.text, it.toPos(sourceFile)) },
+            nonNull(c.op) { UnaryOperator.match(it.text, it.toPos(source, file)) },
             fullVisit(c.expr()),
-            c.toPos(sourceFile)
+            c.toPos(source, file)
         )
     }
 
     override fun visitMulExpr(ctx: MMParser.MulExprContext?): Node = nonNull(ctx) { c ->
         BinaryExpression(
-            nonNull(c.op) { BinaryOperator.match(it.text, it.toPos(sourceFile)) },
+            nonNull(c.op) { BinaryOperator.match(it.text, it.toPos(source, file)) },
             fullVisit(c.left),
             fullVisit(c.right),
-            c.toPos(sourceFile)
+            c.toPos(source, file)
         )
     }
 
     override fun visitAddExpr(ctx: MMParser.AddExprContext?): Node = nonNull(ctx) { c ->
         BinaryExpression(
-            nonNull(c.op) { BinaryOperator.match(it.text, it.toPos(sourceFile)) },
+            nonNull(c.op) { BinaryOperator.match(it.text, it.toPos(source, file)) },
             fullVisit(c.left),
             fullVisit(c.right),
-            c.toPos(sourceFile)
+            c.toPos(source, file)
         )
     }
 
     override fun visitCmpExpr(ctx: MMParser.CmpExprContext?): Node = nonNull(ctx) { c ->
         BinaryExpression(
-            nonNull(c.op) { BinaryOperator.match(it.text, it.toPos(sourceFile)) },
+            nonNull(c.op) { BinaryOperator.match(it.text, it.toPos(source, file)) },
             fullVisit(c.left),
             fullVisit(c.right),
-            c.toPos(sourceFile)
+            c.toPos(source, file)
         )
     }
 
     override fun visitBoolExpr(ctx: MMParser.BoolExprContext?): Node = nonNull(ctx) { c ->
         BinaryExpression(
-            nonNull(c.op) { BinaryOperator.match(it.text, it.toPos(sourceFile)) },
+            nonNull(c.op) { BinaryOperator.match(it.text, it.toPos(source, file)) },
             fullVisit(c.left),
             fullVisit(c.right),
-            c.toPos(sourceFile)
+            c.toPos(source, file)
         )
     }
 
@@ -420,7 +408,7 @@ class AstBuilder(private val sourceFile: String) : MMBaseVisitor<Node>() {
             fullVisit(c.cond),
             fullVisit(c.bTrue),
             fullVisit(c.bFalse),
-            c.toPos(sourceFile)
+            c.toPos(source, file)
         )
     }
 
@@ -429,7 +417,7 @@ class AstBuilder(private val sourceFile: String) : MMBaseVisitor<Node>() {
             fullVisit(c.begin),
             fullVisit(c.end),
             false,
-            c.toPos(sourceFile)
+            c.toPos(source, file)
         )
     }
 
@@ -438,7 +426,7 @@ class AstBuilder(private val sourceFile: String) : MMBaseVisitor<Node>() {
             fullVisit(c.begin),
             fullVisit(c.end),
             true,
-            c.toPos(sourceFile)
+            c.toPos(source, file)
         )
     }
 
@@ -446,20 +434,20 @@ class AstBuilder(private val sourceFile: String) : MMBaseVisitor<Node>() {
         MappedIntExpression(fullVisit(c.count), {
             CurrencyValue(
                 it.value,
-                c.CURRENCY().text.toCurrencyOrNull() ?: throw LiteralError("currency", c.CURRENCY().text, c.toPos(sourceFile)),
-                c.toPos(sourceFile)
+                c.CURRENCY().text.toCurrencyOrNull() ?: throw LiteralError("currency", c.CURRENCY().text, c.toPos(source, file)),
+                c.toPos(source, file)
             )
-        }, c.toPos(sourceFile))
+        }, c.toPos(source, file))
     }
 
     override fun visitDiceExpr(ctx: MMParser.DiceExprContext?): Node = nonNull(ctx) { c ->
         MappedIntExpression(fullVisit(c.count), {
             RollValue(
                 it.value,
-                c.DICE().text.toDiceOrNull() ?: throw LiteralError("dice", c.DICE().text, c.toPos(sourceFile)),
-                c.toPos(sourceFile)
+                c.DICE().text.toDiceOrNull() ?: throw LiteralError("dice", c.DICE().text, c.toPos(source, file)),
+                c.toPos(source, file)
             )
-        }, c.toPos(sourceFile))
+        }, c.toPos(source, file))
     }
     //endregion
 
@@ -468,7 +456,7 @@ class AstBuilder(private val sourceFile: String) : MMBaseVisitor<Node>() {
         HelperNodes.ValueNode(
             StringValue(
                 c.STRING().text.substring(1 until c.STRING().text.length - 1),
-                c.toPos(sourceFile)
+                c.toPos(source, file)
             )
         )
     }
@@ -476,8 +464,8 @@ class AstBuilder(private val sourceFile: String) : MMBaseVisitor<Node>() {
     override fun visitIntLiteral(ctx: MMParser.IntLiteralContext?): Node = nonNull(ctx) { c ->
         HelperNodes.ValueNode(
             IntValue(
-                c.INT().text.toIntOrNull() ?: throw LiteralError("int", c.INT().text, c.toPos(sourceFile)),
-                c.toPos(sourceFile)
+                c.INT().text.toIntOrNull() ?: throw LiteralError("int", c.INT().text, c.toPos(source, file)),
+                c.toPos(source, file)
             )
         )
     }
@@ -485,8 +473,8 @@ class AstBuilder(private val sourceFile: String) : MMBaseVisitor<Node>() {
     override fun visitFloatLiteral(ctx: MMParser.FloatLiteralContext?): Node = nonNull(ctx) { c ->
         HelperNodes.ValueNode(
             FloatValue(
-                c.FLOAT().text.toFloatOrNull() ?: throw LiteralError("float", c.FLOAT().text, c.toPos(sourceFile)),
-                c.toPos(sourceFile)
+                c.FLOAT().text.toFloatOrNull() ?: throw LiteralError("float", c.FLOAT().text, c.toPos(source, file)),
+                c.toPos(source, file)
             )
         )
     }
@@ -494,8 +482,8 @@ class AstBuilder(private val sourceFile: String) : MMBaseVisitor<Node>() {
     override fun visitDiceLiteral(ctx: MMParser.DiceLiteralContext?): Node = nonNull(ctx) { c ->
         HelperNodes.ValueNode(
             DiceValue(
-                c.DICE().text.toDiceOrNull() ?: throw LiteralError("dice value", c.DICE().text, c.toPos(sourceFile)),
-                c.toPos(sourceFile)
+                c.DICE().text.toDiceOrNull() ?: throw LiteralError("dice value", c.DICE().text, c.toPos(source, file)),
+                c.toPos(source, file)
             )
         )
     }
@@ -504,7 +492,7 @@ class AstBuilder(private val sourceFile: String) : MMBaseVisitor<Node>() {
         HelperNodes.ValueNode(
             BoolValue(
                 true,
-                c.toPos(sourceFile)
+                c.toPos(source, file)
             )
         )
     }
@@ -513,7 +501,7 @@ class AstBuilder(private val sourceFile: String) : MMBaseVisitor<Node>() {
         HelperNodes.ValueNode(
             BoolValue(
                 false,
-                c.toPos(sourceFile)
+                c.toPos(source, file)
             )
         )
     }
@@ -522,7 +510,7 @@ class AstBuilder(private val sourceFile: String) : MMBaseVisitor<Node>() {
         HelperNodes.ValueNode(
             IntValue(
                 Int.MAX_VALUE,
-                it.toPos(sourceFile)
+                it.toPos(source, file)
             )
         )
     }
@@ -531,7 +519,7 @@ class AstBuilder(private val sourceFile: String) : MMBaseVisitor<Node>() {
         HelperNodes.ValueNode(
             FloatValue(
                 Float.POSITIVE_INFINITY,
-                it.toPos(sourceFile)
+                it.toPos(source, file)
             )
         )
     }
@@ -541,22 +529,22 @@ class AstBuilder(private val sourceFile: String) : MMBaseVisitor<Node>() {
     override fun visitIdList(ctx: MMParser.IdListContext?): Node = nonNull(ctx) { c ->
         HelperNodes.StringListNode(
             c.ids.map { nonNull(it) { v -> v.text } },
-            c.toPos(sourceFile)
+            c.toPos(source, file)
         )
     }
 
     override fun visitExprList(ctx: MMParser.ExprListContext?): Node = nonNull(ctx) { c ->
         HelperNodes.ListNode(
             c.expr().visitAll<Expression>(),
-            c.toPos(sourceFile)
+            c.toPos(source, file)
         )
     }
     //endregion
 
     companion object {
-        private fun loadSingle(source: String, file: String, provider: Provider): Map<String, Declaration> {
-            val error = AntlrListener("$source($file)")
-            val inputs = provider(source, file)
+        private suspend fun loadSingle(source: String, file: String, provider: ILoader): Map<String, Declaration> {
+            val error = AntlrListener(source, file)
+            val inputs = provider.loadSource(source, file)
             val lexer = MMLexer(CharStreams.fromStream(inputs.source))
             lexer.addErrorListener(error)
 
@@ -565,7 +553,7 @@ class AstBuilder(private val sourceFile: String) : MMBaseVisitor<Node>() {
             parser.addErrorListener(error)
 
             val tree = parser.program()
-            val loader = AstBuilder("$source($file)")
+            val loader = AstBuilder(source, file)
 
             val ast = loader.visitProgram(tree) as Ast
             val declarations = mutableMapOf<String, Declaration>()
@@ -591,7 +579,7 @@ class AstBuilder(private val sourceFile: String) : MMBaseVisitor<Node>() {
             return declarations
         }
 
-        suspend fun loadWithDeps(source: String, file: String, provider: Provider) {
+        suspend fun loadWithDeps(source: String, file: String, provider: ILoader) {
             val output = Runtime.getCache()
             val deps = mutableListOf<Pair<String, String>>()
             val data: MutableMap<String, Declaration> = mutableMapOf()
@@ -626,16 +614,14 @@ class AstBuilder(private val sourceFile: String) : MMBaseVisitor<Node>() {
         }
 
         @OptIn(ExperimentalSerializationApi::class)
-        suspend fun loadEntireCache(cacheDir: String, getStream: (String) -> InputStream) {
+        suspend fun loadEntireCache(provider: ILoader) {
             val output = Runtime.getCache()
-            val strm = getStream("$cacheDir/cache.json")
+            val strm = provider.loadSourceList()
             val map = Json.decodeFromStream<Map<String, List<String>>>(strm)
             val parsed = mutableMapOf<String, Declaration>()
             map.forEach { (src, files) ->
                 files.forEach { file ->
-                    loadSingle(src, file) { src, f ->
-                        Streams(getStream("$cacheDir/$src/$f.mm"), getStream("$cacheDir/$src/$f.mmstr"))
-                    }.forEach { (name, decl) ->
+                    loadSingle(src, file, provider).forEach { (name, decl) ->
                         if(parsed.containsKey(name)) {
                             throw RedeclarationError(name, parsed[name]!!.pos, decl.pos)
                         }

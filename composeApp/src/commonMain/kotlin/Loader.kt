@@ -1,6 +1,11 @@
-import runtime.ICache
+import runtime.CharacterLoader
+import runtime.ILoader
+import runtime.Runtime
+import runtime.ast.AstBuilder
 
-fun loadCharacters(dir: String, cache: ICache, logger: ILogger) {
-    logger.logMessage("Loading characters from $dir")
-    // TODO
+suspend fun loadCharacters(loader: ILoader) {
+    Runtime.getLogger().logMessage("[LD_CHAR]: Loading sources...")
+    AstBuilder.loadEntireCache(loader)
+    Runtime.getLogger().logMessage("[LD_CHAR]: Loading characters...")
+    CharacterLoader.load(loader)
 }

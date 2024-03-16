@@ -13,13 +13,12 @@ import androidx.compose.runtime.setValue
 import com.darkrockstudios.libraries.mpfilepicker.DirectoryPicker
 import com.darkrockstudios.libraries.mpfilepicker.FilePicker
 import kotlinx.coroutines.launch
+import runtime.ILoader
 import runtime.Runtime
 import runtime.ast.AstBuilder
-import runtime.ast.Provider
-import java.io.File
 
 @Composable
-fun loader(local: LocalStorage) {
+fun loader(local: LocalStorage, cache: ILoader) {
     var dialog by remember { mutableStateOf(false) }
     var path by remember { mutableStateOf("") }
     val scope = rememberCoroutineScope()
@@ -31,7 +30,7 @@ fun loader(local: LocalStorage) {
                 AstBuilder.loadWithDeps(
                     source = path.split('/').dropLast(1).last(),
                     file = path.split('/').last().split('.')[0],
-                    provider = DesktopCache.mkProvider(base)
+                    provider = cache
                 )
             } catch (e: Exception) {
                 Runtime.getLogger()
@@ -64,7 +63,7 @@ fun cacheLoader(cache: DesktopCache) {
             try {
                 cache.resetCache()
                 cache.clearLog()
-                AstBuilder.loadEntireCache(it, DesktopCache.mkLoader())
+                AstBuilder.loadEntireCache(cache)
             } catch (e: Exception) {
                 Runtime.getLogger()
                     .logError((e.message ?: "Unknown error") + "\n" + e.stackTraceToString())

@@ -2,33 +2,100 @@ import androidx.compose.runtime.mutableStateListOf
 import runtime.ICache
 import runtime.Type
 import runtime.ast.FunDeclaration
-import java.io.Closeable
 import java.util.prefs.Preferences
 import net.harawata.appdirs.AppDirsFactory
 import runtime.Character
+import runtime.ILoader
+import runtime.IStorage
 import runtime.ast.Streams
 import runtime.ast.Variable
 import java.io.File
+import java.io.InputStream
+import java.io.OutputStream
 
-class DesktopCache : LocalStorage, ICache, ILogger {
-    private val prefs: Preferences = Preferences.userRoot().node("mageMythos")
+class DesktopCache : LocalStorage, ICache, ILogger, ILoader, IStorage {
+    private val prefs: Preferences = Preferences.userRoot().node(APP_TAG)
+    private val appdirs = AppDirsFactory.getInstance()
 
-    override fun lastLoaded(): String = prefs.get(cacheDir, System.getProperty("user.home") + "/")
-    override fun onLoad(dir: String) = prefs.put(cacheDir, dir)
+    override fun lastLoaded(): String = prefs.get(CACHE_DIR, System.getProperty("user.home") + "/")
+    override fun onLoad(dir: String) = prefs.put(CACHE_DIR, dir)
 
-    override fun selectedCacheDir(): String? = prefs.get(cacheDir, "")?.let { if(it == "") null else it }
-    override fun onSetCacheDir(dir: String) = prefs.put(cacheDir, dir)
+    override fun selectedCacheDir(): String? = prefs.get(CACHE_DIR, "")?.let { if(it == "") null else it }
+    override fun onSetCacheDir(dir: String) = prefs.put(CACHE_DIR, dir)
 
-    fun characterCache(): String {
-        val res = prefs.get(charCache, AppDirsFactory.getInstance().getUserDataDir("mageMythos", null, null))
+    private fun characterCache(): String {
+        val res = prefs.get(CHAR_CACHE, appdirs.getUserDataDir(APP_TAG, null, null))
         File(res).mkdirs()
-        prefs.put(charCache, res)
+        prefs.put(CHAR_CACHE, res)
         return res
     }
 
+    override suspend fun loadSource(source: String, file: String): Streams {
+        val base = lastLoaded()
+        val sourceStream = try {
+            File("$base/$source/$file.mm").inputStream()
+        } catch(e: Exception) {
+            throw SourceLoadingError(source, file, "$base/$source/$file.mm")
+        }
+
+        val descStream = try {
+            File("$base/$source/$file.mmstr").inputStream()
+        } catch(e: Exception) {
+            throw DescLoadingError(source, file, "$base/$source/$file.mmstr")
+        }
+
+        return Streams(sourceStream, descStream)
+    }
+
+    override suspend fun loadSourceList(): InputStream {
+        val base = lastLoaded()
+        return try {
+            File("$base/cache.json").inputStream()
+        } catch (e: Exception) {
+            throw FileLoadingError("$base/cache.json")
+        }
+    }
+
+    override suspend fun loadCharacterList(): InputStream {
+        val base = characterCache()
+        return try {
+            File("$base/.cache.json").inputStream()
+        } catch (e: Exception) {
+            throw FileLoadingError("$base/.cache.json")
+        }
+    }
+
+    override suspend fun saveCharacterList(): OutputStream {
+        val base = characterCache()
+        return try {
+            File("$base/.cache.json").outputStream()
+        } catch (e: Exception) {
+            throw FileLoadingError("$base/.cache.json")
+        }
+    }
+
+    override suspend fun loadCharacter(name: String): InputStream {
+        val base = characterCache()
+        return try {
+            File("$base/c_$name.json").inputStream()
+        } catch (e: Exception) {
+            throw FileLoadingError("$base/c_$name.json")
+        }
+    }
+
+    override suspend fun saveCharacter(name: String): OutputStream {
+        val base = characterCache()
+        return try {
+            File("$base/c_$name.json").outputStream()
+        } catch (e: Exception) {
+            throw FileLoadingError("$base/c_$name.json")
+        }
+    }
+
     companion object {
-        private const val cacheDir = "cacheDir"
-        private const val charCache = "characters"
+        private const val APP_TAG = "mageMythos"
+        private const val CACHE_DIR = "cacheDir"
+        private const val CHAR_CACHE = "characters"
 
         fun mkProvider(base: String) = { src: String, file: String ->
             println("[Provider]: $src($file) -> $base/$src/$file.mm")
@@ -74,6 +141,7 @@ class DesktopCache : LocalStorage, ICache, ILogger {
     override fun typeIterator(): Iterator<Type> = types.values.iterator()
     override fun functionIterator(): Iterator<FunDeclaration> = functions.values.iterator()
     override fun globalIterator(): Iterator<Variable> = globals.values.iterator()
+    override fun characterIterator(): Iterator<Character> = characters.iterator()
 
     fun resetCache() {
         types.clear()

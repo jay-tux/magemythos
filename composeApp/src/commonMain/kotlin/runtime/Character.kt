@@ -10,7 +10,8 @@ import java.util.EnumSet
 
 class Character(
     name: String,
-    race: Race, subrace: Subrace?, clazz: Class, background: Background
+    race: Race, subrace: Subrace?, clazz: List<CharacterClass>, background: Background,
+    choices: Map<String, Value> = mapOf()
 ) {
     enum class CharacterFlag { DISABLE_SPELLS }
     class CharacterFlags(private val flags: EnumSet<CharacterFlag> = EnumSet.noneOf(CharacterFlag::class.java)) {
@@ -21,7 +22,7 @@ class Character(
     data class CharacterClass(val clazz: Class, val level: Int)
     data class ItemDetails(val item: Item, val amount: Int, val equipped: Boolean)
 
-    private val choices: MutableMap<String, Value> = mutableMapOf()
+    val choices: MutableMap<String, Value> = choices.toMutableMap()
 
     private val _name = mutableStateOf(name)
     val name = _name.immutable()
@@ -32,7 +33,7 @@ class Character(
     private val _subrace = mutableStateOf(subrace)
     val subrace = _subrace.immutable()
 
-    private val _class = mutableStateOf(listOf(CharacterClass(clazz, 1)))
+    private val _class = mutableStateOf(clazz)
     val clazz = _class.immutable()
 
     private val _background = mutableStateOf(background)
@@ -232,6 +233,6 @@ class Character(
     }
 
     companion object {
-        private val runtimePos = Pos("<runtime::CreateCharacter>", 0, 0)
+        private val runtimePos = Pos("<runtime>", "<createCharacter>", 0, 0)
     }
 }
