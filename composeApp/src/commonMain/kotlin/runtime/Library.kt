@@ -46,6 +46,7 @@ object Library {
         "addTraits" -> withCharacter("addTraits", at) { addTraits(args, at) }
         "addSaveProfs" -> withCharacter("addSaveProfs", at) { addSaveProfs(args, at) }
         "addItems" -> withCharacter("addItems", at) { addItems(args, at) }
+        "getItemsByTags" -> withCharacter("getItemsByTags", at) { getItemsByTags(args, at) }
 
         else -> null
     }

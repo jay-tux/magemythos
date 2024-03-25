@@ -30,3 +30,5 @@ interface Ref<T> : ImmutableRef<T> {
         }
     }
 }
+
+fun Int.toSignedString() = if (this >= 0) "+$this" else this.toString()

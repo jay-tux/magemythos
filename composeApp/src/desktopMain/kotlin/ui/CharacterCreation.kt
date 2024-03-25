@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -27,6 +28,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 import runtime.Background
@@ -40,12 +42,40 @@ import runtime.ChoiceDesc
 import runtime.ChoiceScope
 import runtime.DfsRuntime
 import runtime.ast.ListValue
+import runtime.ast.Pos
+import runtime.ast.Value
 import runtime.subracesFor
 import runtime.typesOfKind
 import java.awt.GraphicsEnvironment
 import kotlin.math.min
 
-enum class CreationPage { MAIN, RACE, CLASS, BACKGROUND }
+enum class CreationPage { MAIN, RACE, CLASS, BACKGROUND, LOADING, ABILITIES, ERROR }
+
+fun onCharBuildChoice(scope: CoroutineScope, builder: Character.Builder?, onFail: () -> Unit, modState: (ChoiceDesc, suspend (List<Value>) -> Unit) -> Unit, onDone: () -> Unit) {
+    scope.launch {
+        try {
+            val done = builder?.run { choice ->
+                Runtime.getLogger().logMessage("    -> Requires choice (${choice.name}; ${choice.options.size} options; make ${choice.count} choices)!")
+                modState(choice) { res: List<Value> ->
+                    val pass =
+                        if (res.size == 1) res[0]
+                        else  ListValue(res, Pos("<runtime>", "<createCharacter>", 0, 0))
+                    builder.provideChoice(
+                        choice.name,
+                        pass
+                    )
+                    if(!builder.doneRunning()) {
+                        onCharBuildChoice(scope, builder, onFail, modState, onDone)
+                    }
+                }
+            }
+
+            if(done == true) onDone()
+        } catch (e: DfsRuntime.ExecutionFailure) {
+            onFail()
+        }
+    }
+}
 
 @Composable
 fun CharacterCreationDialog(onExit: () -> Unit, onFinish: (String, Race, Subrace?, Class, Background) -> Unit) {
@@ -53,7 +83,11 @@ fun CharacterCreationDialog(onExit: () -> Unit, onFinish: (String, Race, Subrace
     val raceOptions by remember { mutableStateOf(Runtime.getCache().typesOfKind<Race>()) }
     var subraceOptions by remember { mutableStateOf(listOf<Subrace>()) }
     val classOptions by remember { mutableStateOf(Runtime.getCache().typesOfKind<Class>()) }
-    val backgroundOptions by remember { mutableStateOf(Runtime.getCache().typesOfKind<Background>()) }
+    val backgroundOptions by remember {
+        mutableStateOf(
+            Runtime.getCache().typesOfKind<Background>()
+        )
+    }
 
     var raceIdx by remember { mutableStateOf(-1) }
     var subraceIdx by remember { mutableStateOf(-1) }
@@ -63,18 +97,36 @@ fun CharacterCreationDialog(onExit: () -> Unit, onFinish: (String, Race, Subrace
     var page by remember { mutableStateOf(CreationPage.MAIN) }
     val screenSize = GraphicsEnvironment.getLocalGraphicsEnvironment().maximumWindowBounds.size
 
+    var choice by remember { mutableStateOf<ChoiceDesc?>(null) }
+    var choicePost by remember { mutableStateOf<suspend (List<Value>) -> Unit>({}) }
+
+    val scope = rememberCoroutineScope()
+    var builder by remember { mutableStateOf<Character.Builder?>(null) }
+    val continueBuilder = {
+        Runtime.getLogger().logMessage(" -> Continuing character builder...")
+        onCharBuildChoice(scope, builder, { choice = null; builder = null; page = CreationPage.ERROR }, { c, post ->
+            choice = c
+            choicePost = { choice = null; post(it) }
+        }) {
+            page = CreationPage.ABILITIES
+        }
+    }
+
     val w = min((screenSize.width * 0.3f).toInt(), 500).dp
     val h = min((screenSize.height * 0.8f).toInt(), 800).dp
 
     Dialog({ onExit() }, properties = DialogProperties()) {
-        Surface(Modifier.width(w).height(h).padding(5.dp).background(MaterialTheme.colorScheme.secondaryContainer)) {
+        Surface(
+            Modifier.width(w).height(h).padding(5.dp)
+                .background(MaterialTheme.colorScheme.secondaryContainer)
+        ) {
             when (page) {
                 CreationPage.MAIN -> CharacterMainPage(
                     name,
-                    if(raceIdx == -1) null else raceOptions[raceIdx],
-                    if(subraceIdx == -1) null else subraceOptions[subraceIdx],
-                    if(classIdx == -1) null else classOptions[classIdx],
-                    if(backgroundIdx == -1) null else backgroundOptions[backgroundIdx],
+                    if (raceIdx == -1) null else raceOptions[raceIdx],
+                    if (subraceIdx == -1) null else subraceOptions[subraceIdx],
+                    if (classIdx == -1) null else classOptions[classIdx],
+                    if (backgroundIdx == -1) null else backgroundOptions[backgroundIdx],
                     // name has to be set, class has to be set, race has to be set & if race has subraces: subrace has to be set
                     name.isNotEmpty() && classIdx != -1 && raceIdx != -1 && (!raceOptions[raceIdx].hasSubraces || subraceIdx != -1) && backgroundIdx != -1,
                     { name = it },
@@ -83,14 +135,23 @@ fun CharacterCreationDialog(onExit: () -> Unit, onFinish: (String, Race, Subrace
                     { page = CreationPage.BACKGROUND },
                     onExit,
                     {
-                        onExit()
-                        onFinish(
+                        page = CreationPage.LOADING
+                        builder = Character(
                             name,
                             raceOptions[raceIdx],
-                            if(subraceIdx != -1) subraceOptions[subraceIdx] else null,
-                            classOptions[classIdx],
+                            if (subraceIdx != -1) subraceOptions[subraceIdx] else null,
+                            listOf(Character.CharacterClass(classOptions[classIdx], 1)),
                             backgroundOptions[backgroundIdx]
-                        )
+                        ).Builder()
+                        continueBuilder()
+//                        onExit()
+//                        onFinish(
+//                            name,
+//                            raceOptions[raceIdx],
+//                            if(subraceIdx != -1) subraceOptions[subraceIdx] else null,
+//                            classOptions[classIdx],
+//                            backgroundOptions[backgroundIdx]
+//                        )
                     }
                 )
 
@@ -100,7 +161,10 @@ fun CharacterCreationDialog(onExit: () -> Unit, onFinish: (String, Race, Subrace
                     raceOptions,
                     subraceOptions,
                     { page = CreationPage.MAIN },
-                    { raceIdx = it; subraceIdx = -1; subraceOptions = Runtime.getCache().subracesFor(raceOptions[it]) },
+                    {
+                        raceIdx = it; subraceIdx = -1; subraceOptions =
+                        Runtime.getCache().subracesFor(raceOptions[it])
+                    },
                     { subraceIdx = it; page = CreationPage.MAIN }
                 )
 
@@ -117,7 +181,36 @@ fun CharacterCreationDialog(onExit: () -> Unit, onFinish: (String, Race, Subrace
                     { page = CreationPage.MAIN },
                     { backgroundIdx = it; page = CreationPage.MAIN }
                 )
+
+                CreationPage.LOADING -> {
+                    Box(Modifier.fillMaxSize()) {
+                        Text("Initializing character...", Modifier.align(Alignment.Center))
+                    }
+                }
+
+                CreationPage.ABILITIES -> {
+                    Box(Modifier.fillMaxSize()) {
+                        Text("Abilities page", Modifier.align(Alignment.Center))
+                    }
+                }
+
+                CreationPage.ERROR -> {
+                    Box(Modifier.fillMaxSize()) {
+                        Column(Modifier.align(Alignment.Center)) {
+                            Text("An error occurred.", color = MaterialTheme.colorScheme.error)
+                            Button({ onExit() }) { Text("OK") }
+                        }
+                    }
+                }
             }
+        }
+    }
+
+    choice?.let {
+        ChoiceDialog(it.title, it.options, it.count) { res ->
+            choice = null
+            Runtime.getLogger().logMessage("Made a choice: ${it.name}")
+            scope.launch { choicePost(res); choice = null }
         }
     }
 }

@@ -2,10 +2,15 @@ package ui
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.ContentAlpha
 import androidx.compose.material.icons.Icons
@@ -29,7 +34,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import runtime.Ability
 import runtime.Character
+import toSignedString
 
 @Composable
 fun indented(indent: Int, content: @Composable () -> Unit) = Row {
@@ -100,12 +107,37 @@ fun CharacterWidget(char: Character, selected: Boolean, onClick: () -> Unit) {
     val classes by char.clazz
 
     Surface(
-        Modifier.clickable { onClick() },
-        color = if(selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondaryContainer
+        Modifier.clickable { onClick() }.fillMaxWidth(),
+        color = if(selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondaryContainer,
+        shape = MaterialTheme.shapes.medium
     ) {
-        Column {
-            Text(name, style = MaterialTheme.typography.bodyLarge)
-            Text("Level ${classes.sumOf { it.level }} ${subrace?.displayName ?: race.displayName}", style = MaterialTheme.typography.bodySmall)
+        Row(Modifier.padding(10.dp)) {
+            Surface(Modifier.height(50.dp).aspectRatio(1.0f), shape = MaterialTheme.shapes.extraLarge) {
+                // TODO
+            }
+            Spacer(Modifier.width(10.dp))
+            Column {
+                Text(name, style = MaterialTheme.typography.bodyLarge)
+                Text(
+                    "Level ${classes.sumOf { it.level }} ${subrace?.displayName ?: race.displayName}",
+                    style = MaterialTheme.typography.bodySmall
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun AbilityWidget(ab: Ability, value: Int, modifier: Modifier = Modifier) {
+    Column(modifier) {
+        Box(Modifier.weight(0.3f).fillMaxWidth()) {
+            Text(ab.abbrev, Modifier.align(Alignment.Center), style = MaterialTheme.typography.bodyMedium)
+        }
+        Box(Modifier.weight(0.5f).fillMaxWidth()) {
+            Text(value.toString(), Modifier.align(Alignment.Center), style = MaterialTheme.typography.headlineMedium)
+        }
+        Box(Modifier.weight(0.2f).fillMaxWidth()) {
+            Text(Character.abilityMod(value).toSignedString(), Modifier.align(Alignment.Center), style = MaterialTheme.typography.bodySmall)
         }
     }
 }

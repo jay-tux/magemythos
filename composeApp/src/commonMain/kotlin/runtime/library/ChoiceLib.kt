@@ -27,7 +27,8 @@ fun ChoiceScope.ready(fName: String, args: List<Value>, argCount: Int, at: Pos, 
     checkArgCount(fName, args, argCount, at)
     Runtime.getLogger().logMessage("[CHOICESCOPE]: Calling $fName (${args.size}/$argCount args) at $at")
     val cName = args[0].require<StringValue>("string", at).value
-    return getChoice(cName)?.left() ?: choiceNotMade(cName, Pos("<library>","<$fName>", 0, 0), args).right()
+    Runtime.getLogger().logMessage("[CHOICEsCOPE]:   -> Choice name is $cName")
+    return getChoice(cName)?.let{ Runtime.getLogger().logMessage("[CHOICESCOPE]:   -> Choice $cName already made: $it"); it }?.left() ?: choiceNotMade(cName, Pos("<library>","<$fName>", 0, 0), args).right()
 }
 
 fun ChoiceScope.choose(argsPre: List<Value>, at: Pos) = ready("choose", argsPre, 3, at) { name, pos, args ->
@@ -47,7 +48,7 @@ fun ChoiceScope.chooseN(argsPre: List<Value>, at: Pos) = ready("chooseN", argsPr
     this(desc)
 }
 
-fun ChoiceScope.chooseLanguage(ch: Character, argsPre: List<Value>, at: Pos) = ready("chooseLanguages", argsPre, 1, at) { name, pos, _ ->
+fun ChoiceScope.chooseLanguage(ch: Character, argsPre: List<Value>, at: Pos) = ready("chooseLanguage", argsPre, 1, at) { name, pos, _ ->
     val chosen = ch.languages.value.map { it.name }
     val options = Runtime.getCache().typesOfKind<Language>().filter { !chosen.contains(it.name) }
     val desc = ChoiceDesc(name, "Choose a language", 1, options.map { it.construct(pos) }, pos)
@@ -75,8 +76,11 @@ fun ChoiceScope.chooseItem(argsPre: List<Value>, at: Pos) = ready("chooseItem", 
             else -> throw TypeError("Item or ItemTag", f, pos)
         }
     }
+    Runtime.getLogger().logMessage("[CHOICESCOPE]: Applying filters: ${actualFilters.map { it.displayName }}")
+    val filtered = Runtime.getCache().typesOfKind<Item>().filter { it.tags.containsAll(actualFilters) }
+    Runtime.getLogger().logMessage("[CHOICESCOPE]: ${filtered.size} items found: ${filtered.map { it.displayName }}")
 
-    Runtime.getCache().typesOfKind<Item>().filter { it.tags.containsAll(actualFilters) }.forEach { options.add(it) }
+    filtered.forEach { options.add(it) }
     val desc = ChoiceDesc(name, "Choose an item", 1, options.map { it.construct(pos) }, pos)
     this(desc)
 }

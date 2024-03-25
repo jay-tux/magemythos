@@ -144,7 +144,27 @@ sealed class Type(val name: String, fields: List<MemberDeclaration>, members: Li
 }
 
 class Ability(name: String, fields: List<MemberDeclaration>, members: List<FunDeclaration>, pos: Pos) : Type(name, fields, members, pos) {
-    override fun mkScope(): TagScope = object : TagScopeImpl() { override fun kind(): String = "Ability" }
+    lateinit var abbrev: String
+        private set
+
+    interface AbilityTagScope : TagScope {
+        fun setAbbrev(abbrev: String)
+    }
+
+    private inner class AbilityTagScopeImpl : TagScopeImpl(), AbilityTagScope {
+        override fun kind(): String = "Ability"
+
+        override fun setAbbrev(abbrev: String) {
+            this@Ability.abbrev = abbrev
+        }
+    }
+
+    override fun mkScope(): TagScope = AbilityTagScopeImpl()
+
+    override fun verify() {
+        super.verify()
+        if(!::abbrev.isInitialized) throw MissingTagError(name, "Ability", "abbreviation", "@abbrev", pos)
+    }
 }
 
 class Skill(name: String, fields: List<MemberDeclaration>, members: List<FunDeclaration>, pos: Pos) : Type(name, fields, members, pos) {
@@ -461,6 +481,10 @@ class Item(name: String, fields: List<MemberDeclaration>, members: List<FunDecla
 
         override fun addData(data: ItemData) {
             _data.add(data)
+            if(data is Weapon) {
+                _tags.add(data.kindTag)
+                _tags.add(data.rangeTag)
+            }
         }
 
         override fun setPer(per: Int) {

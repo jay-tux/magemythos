@@ -220,7 +220,7 @@ fun Character.addSaveProfs(argsPre: List<Value>, at: Pos): Value = readyChar("ad
     VoidValue(pos)
 }
 
-fun Character.addItems(argsPre: List<Value>, at: Pos): Value = readyChar("addItems", argsPre, 2, at) { args, pos ->
+fun Character.addItems(argsPre: List<Value>, at: Pos): Value = readyChar("addItems", argsPre, 1, at) { args, pos ->
     args[0].require<ListValue>("list", pos).value.forEach { i ->
         when(i) {
             is ObjectValue -> addItem(i.requireObject("Item", pos), 1)
@@ -234,4 +234,10 @@ fun Character.addItems(argsPre: List<Value>, at: Pos): Value = readyChar("addIte
         }
     }
     VoidValue(pos)
+}
+
+fun Character.getItemsByTags(argsPre: List<Value>, at: Pos): Value = readyChar("getItemsByTags", argsPre, 1, at) { args, pos ->
+    val tags = args[0].require<ListValue>("list", pos).value.map { it.requireObject<ItemTag>("ItemTag", pos) }
+    val res = Runtime.getCache().typesOfKind<Item>().filter { it.tags.containsAll(tags) }.map { ObjectValue(it, mapOf(), pos) }
+    ListValue(res, pos)
 }

@@ -54,7 +54,10 @@ enum class BinaryOperator {
     }
 
     fun withValues(left: Value, right: Value, at: Pos): Value = when(this) {
-        ADD -> arithmetic(left, right, at, Int::plus, Float::plus)
+        ADD -> if(left is ListValue) {
+            if(right is ListValue) ListValue(left.value + right.value, at)
+            else ListValue(left.value + List(right.require<IntValue>("int", at).value) { right }, at)
+        } else arithmetic(left, right, at, Int::plus, Float::plus)
         SUB -> arithmetic(left, right, at, Int::minus, Float::minus)
         MUL -> {
             when(left) {

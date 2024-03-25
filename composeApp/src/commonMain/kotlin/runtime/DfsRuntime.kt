@@ -211,7 +211,9 @@ class DfsRuntime private constructor(val at: Pos) {
 
                 Library.invokeFunction(target, args, at)?.let {
                     onValue(it)
-                } ?: Library.invokeChoice(target, args, at) ?: throw NoFunctionError(target, at)
+                } ?: Library.invokeChoice(target, args, at)?.let {
+                    it.fold({ v -> choice = null; onValue(v) }) {}
+                } ?: throw NoFunctionError(target, at)
             }
         }
     }
@@ -347,7 +349,10 @@ class DfsRuntime private constructor(val at: Pos) {
 
     suspend fun run(): Value = stackTraced {
         var res = runUntilChoice()
-        while(res.isLeft()) res = runUntilChoice()
+        while(res.isLeft()) {
+            if(choice != null) throw RuntimeInternalError("Run-until-choice hit a choice it couldn't resolve")
+            res = runUntilChoice()
+        }
         res.getOrNull() ?: throw RuntimeInternalError("Run-until-choice failed to provide a value")
     }
 
@@ -370,6 +375,7 @@ class DfsRuntime private constructor(val at: Pos) {
 
         fun ready(thisObj: ObjectValue? = null, invocationTarget: String, args: List<Value> = listOf(), at: Pos, helpers: CharacterOrHelpers) {
             if(instance != null) throw IllegalStateException("Runtime already started")
+            Runtime.getLogger().logMessage("[DFSRUNTIME]: Runtime started with this=${thisObj}; invocationTarget=$invocationTarget; args=$args")
             when(helpers) {
                 is CharacterOrHelpers.UsingCharacter -> {
                     Library.character = helpers.c

@@ -3,15 +3,37 @@ package runtime
 import androidx.compose.runtime.mutableStateOf
 import immutable
 import runtime.DfsRuntime.Companion.CharacterOrHelpers.Companion.prepare
+import runtime.ast.AssignmentStmt
+import runtime.ast.BinaryExpression
+import runtime.ast.BreakStmt
+import runtime.ast.CallExpression
+import runtime.ast.ExprStmt
+import runtime.ast.Expression
+import runtime.ast.ForStmt
+import runtime.ast.FunDeclaration
+import runtime.ast.IfStmt
+import runtime.ast.IndexExpression
+import runtime.ast.ListExpression
+import runtime.ast.LiteralExpression
+import runtime.ast.MappedIntExpression
+import runtime.ast.MemberCallExpression
+import runtime.ast.MemberExpression
 import runtime.ast.ObjectValue
 import runtime.ast.Pos
+import runtime.ast.RangeExpression
+import runtime.ast.ReturnStmt
+import runtime.ast.Statement
+import runtime.ast.TernaryExpression
+import runtime.ast.UnaryExpression
 import runtime.ast.Value
+import runtime.ast.VariableExpression
+import runtime.ast.WhileStmt
 import java.util.EnumSet
 
 class Character(
     name: String,
     race: Race, subrace: Subrace?, clazz: List<CharacterClass>, background: Background,
-    choices: Map<String, Value> = mapOf()
+    choices: Map<String, Value> = mapOf(), hp: Pair<Int, Int> = 0 to 0
 ) {
     enum class CharacterFlag { DISABLE_SPELLS }
     class CharacterFlags(private val flags: EnumSet<CharacterFlag> = EnumSet.noneOf(CharacterFlag::class.java)) {
@@ -198,20 +220,133 @@ class Character(
                 }
             }
             2 -> ObjectValue(clazz.value[0].clazz, mapOf(), runtimePos)
-            3 -> ObjectValue(background.value, mapOf(), runtimePos)
+            3 -> {
+                dumpAst(background.value.members.first{ it.name == "onSelect" })
+                ObjectValue(background.value, mapOf(), runtimePos)
+            }
             else -> throw IllegalStateException("Invalid state")
         }.also { state++ }
 
-        suspend fun run(onChoice: suspend (ChoiceDesc) -> Unit) {
+        private fun dumpAst(f: FunDeclaration) {
+            Runtime.getLogger().logMessage("[DUMP_AST]: ---------------------")
+            Runtime.getLogger().logMessage("[DUMP_AST]: AST FOR ${f.name} (arguments: ${f.params})")
+
+            f.body.forEach { s -> dumpStmt(s) }
+
+            Runtime.getLogger().logMessage("[DUMP_AST]: ---------------------")
+        }
+
+        private fun dumpStmt(stmt: Statement, indent: Int = 0) {
+            var i = ""
+            repeat(indent) { i += "  " }
+            when(stmt) {
+                is AssignmentStmt -> {
+                    Runtime.getLogger().logMessage("[DUMP_AST]: $i -> Assign to ${stmt.name}")
+                    dumpExpr(stmt.expr, indent + 1)
+                }
+                is BreakStmt -> {
+                    Runtime.getLogger().logMessage("[DUMP_AST]: $i -> Break")
+                }
+                is ExprStmt -> {
+                    Runtime.getLogger().logMessage("[DUMP_AST]: $i -> Expression")
+                    dumpExpr(stmt.expr, indent + 1)
+                }
+                is ForStmt -> {
+                    Runtime.getLogger().logMessage("[DUMP_AST]: $i -> For ${stmt.name} in ")
+                    dumpExpr(stmt.set, indent + 1)
+                    Runtime.getLogger().logMessage("[DUMP_AST]: $i -> do (for ${stmt.name} in) ")
+                    stmt.body.forEach { s -> dumpStmt(s, indent + 1) }
+                }
+                is IfStmt -> {
+                    Runtime.getLogger().logMessage("[DUMP_AST]: $i -> If")
+                    dumpExpr(stmt.condition, indent + 1)
+                    Runtime.getLogger().logMessage("[DUMP_AST]: $i -> then")
+                    stmt.bodyTrue.forEach { s -> dumpStmt(s, indent + 1) }
+                    Runtime.getLogger().logMessage("[DUMP_AST]: $i -> else")
+                    stmt.bodyFalse?.forEach { s -> dumpStmt(s, indent + 1) } ?: Runtime.getLogger().logMessage("[DUMP_AST]: $i   -> (no else)")
+                }
+                is ReturnStmt -> {
+                    Runtime.getLogger().logMessage("[DUMP_AST]: $i -> Return")
+                    stmt.expr?.let { dumpExpr(it, indent + 1) } ?: Runtime.getLogger().logMessage("[DUMP_AST]: $i   -> (no return value)")
+                }
+                is WhileStmt -> {
+                    Runtime.getLogger().logMessage("[DUMP_AST]: $i -> While")
+                    dumpExpr(stmt.condition, indent + 1)
+                    Runtime.getLogger().logMessage("[DUMP_AST]: $i -> do (while)")
+                    stmt.body.forEach { s -> dumpStmt(s, indent + 1) }
+                }
+            }
+        }
+
+        private fun dumpExpr(e: Expression, indent: Int = 0) {
+            var i = "";
+            repeat(indent) { i += "  " }
+            when(e) {
+                is BinaryExpression -> {
+                    Runtime.getLogger().logMessage("[DUMP_AST]: $i -> Binary ${e.op}")
+                    dumpExpr(e.left, indent + 1)
+                    dumpExpr(e.right, indent + 1)
+                }
+                is CallExpression -> {
+                    Runtime.getLogger().logMessage("[DUMP_AST]: $i -> Call ${e.name}")
+                    e.args.forEach { dumpExpr(it, indent + 1) }
+                }
+                is IndexExpression -> {
+                    Runtime.getLogger().logMessage("[DUMP_AST]: $i -> Index")
+                    dumpExpr(e.target, indent + 1)
+                    dumpExpr(e.index, indent + 1)
+                }
+                is LiteralExpression -> {
+                    Runtime.getLogger().logMessage("[DUMP_AST]: $i -> Literal ${e.value}")
+                }
+                is MappedIntExpression -> {
+                    Runtime.getLogger().logMessage("[DUMP_AST]: $i -> MappedInt")
+                    dumpExpr(e.target, indent + 1)
+                }
+                is MemberCallExpression -> {
+                    Runtime.getLogger().logMessage("[DUMP_AST]: $i -> MemberCall ${e.member}")
+                    dumpExpr(e.target, indent + 1)
+                    e.args.forEach { dumpExpr(it, indent + 1) }
+                }
+                is MemberExpression -> {
+                    Runtime.getLogger().logMessage("[DUMP_AST]: $i -> Member ${e.member}")
+                    dumpExpr(e.target, indent + 1)
+                }
+                is RangeExpression -> {
+                    Runtime.getLogger().logMessage("[DUMP_AST]: $i -> Range (inclusive? ${e.inclusive})")
+                    dumpExpr(e.start, indent + 1)
+                    dumpExpr(e.end, indent + 1)
+                }
+                is ListExpression -> {
+                    Runtime.getLogger().logMessage("[DUMP_AST]: $i -> List")
+                    e.values.forEach { dumpExpr(it, indent + 1) }
+                }
+                is TernaryExpression -> {
+                    Runtime.getLogger().logMessage("[DUMP_AST]: $i -> Ternary")
+                    dumpExpr(e.cond, indent + 1)
+                    dumpExpr(e.bTrue, indent + 1)
+                    dumpExpr(e.bFalse, indent + 1)
+                }
+                is UnaryExpression -> {
+                    Runtime.getLogger().logMessage("[DUMP_AST]: $i -> Unary ${e.op}")
+                    dumpExpr(e.target, indent + 1)
+                }
+                is VariableExpression -> {
+                    Runtime.getLogger().logMessage("[DUMP_AST]: $i -> Variable ${e.name}")
+                }
+            }
+        }
+
+        suspend fun run(onChoice: suspend (ChoiceDesc) -> Unit): Boolean {
             Runtime.getLogger().logMessage(" -> Running creation (is continuation? ${DfsRuntime.isRunning()})")
-            if(state == 4) {
+            if(state == 4 && !DfsRuntime.isRunning()) {
                 // character creation should be complete
                 Runtime.getLogger().logMessage("  -> Character finally finished!")
                 Runtime.getCache().register(result)
                 Runtime.getLogger().logMessage("  -> Character registered.")
                 CharacterLoader.store(Runtime.getStorage())
                 Runtime.getLogger().logMessage("  -> Characters backed up to storage.")
-                return
+                return true
             }
             if(DfsRuntime.isRunning()) {
                 val temp = DfsRuntime.getInstance().runUntilChoice().leftOrNull()
@@ -228,6 +363,7 @@ class Character(
                 DfsRuntime.ready(sel, "onSelect", listOf(), runtimePos, this@Character.prepare())
                 run(onChoice)
             }
+            return false
         }
 
         fun provideChoice(name: String, result: Value) {
@@ -241,5 +377,7 @@ class Character(
 
     companion object {
         private val runtimePos = Pos("<runtime>", "<createCharacter>", 0, 0)
+
+        fun abilityMod(score: Int) = (score - 10) / 2
     }
 }

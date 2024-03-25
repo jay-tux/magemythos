@@ -29,15 +29,14 @@ import androidx.compose.ui.window.application
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import runtime.Character
-import runtime.CharacterLoader
 import runtime.ChoiceDesc
 import runtime.DfsRuntime
 import runtime.Runtime
-import runtime.TraitOrList
 import runtime.ast.ListValue
 import runtime.ast.Pos
 import runtime.ast.Value
 import ui.CharacterCreationDialog
+import ui.CharacterView
 import ui.CharacterWidget
 import ui.ChoiceDialog
 import ui.Console
@@ -49,29 +48,29 @@ enum class BottomTab(val show: String) {
     NONE(""), CONSOLE("Console")
 }
 
-fun onChoice(scope: CoroutineScope, cache: DesktopCache, builder: Character.Builder?, onFail: () -> Unit, modState: (ChoiceDesc, suspend (List<Value>) -> Unit) -> Unit) {
-    scope.launch {
-        try {
-            builder?.run { choice ->
-                Runtime.getLogger().logMessage("    -> Requires choice (${choice.name}; ${choice.options.size} options; make ${choice.count} choices)!")
-                modState(choice) { res: List<Value> ->
-                    val pass =
-                        if (res.size == 1) res[0]
-                        else  ListValue(res, Pos("<runtime>", "<createCharacter>", 0, 0))
-                    builder.provideChoice(
-                        choice.name,
-                        pass
-                    )
-                    if(!builder.doneRunning()) {
-                        onChoice(scope, cache, builder, onFail, modState)
-                    }
-                }
-            }
-        } catch (e: DfsRuntime.ExecutionFailure) {
-            onFail()
-        }
-    }
-}
+//fun onCharBuildChoice(scope: CoroutineScope, cache: DesktopCache, builder: Character.Builder?, onFail: () -> Unit, modState: (ChoiceDesc, suspend (List<Value>) -> Unit) -> Unit) {
+//    scope.launch {
+//        try {
+//            builder?.run { choice ->
+//                Runtime.getLogger().logMessage("    -> Requires choice (${choice.name}; ${choice.options.size} options; make ${choice.count} choices)!")
+//                modState(choice) { res: List<Value> ->
+//                    val pass =
+//                        if (res.size == 1) res[0]
+//                        else  ListValue(res, Pos("<runtime>", "<createCharacter>", 0, 0))
+//                    builder.provideChoice(
+//                        choice.name,
+//                        pass
+//                    )
+//                    if(!builder.doneRunning()) {
+//                        onCharBuildChoice(scope, cache, builder, onFail, modState)
+//                    }
+//                }
+//            }
+//        } catch (e: DfsRuntime.ExecutionFailure) {
+//            onFail()
+//        }
+//    }
+//}
 
 @Composable
 fun mainView(cache: DesktopCache) = Surface {
@@ -80,18 +79,18 @@ fun mainView(cache: DesktopCache) = Surface {
     var selected by remember { mutableStateOf(-1) }
     var creationOpened by remember { mutableStateOf(false) }
 
-    var choice by remember { mutableStateOf<ChoiceDesc?>(null) }
-    var choicePost by remember { mutableStateOf<suspend (List<Value>) -> Unit>({}) }
+//    var choice by remember { mutableStateOf<ChoiceDesc?>(null) }
+//    var choicePost by remember { mutableStateOf<suspend (List<Value>) -> Unit>({}) }
 
-    val scope = rememberCoroutineScope()
-    var builder by remember { mutableStateOf<Character.Builder?>(null) }
-    val continueBuilder = {
-        Runtime.getLogger().logMessage(" -> Continuing character builder...")
-        onChoice(scope, cache, builder, { choice = null; builder = null }, { c, post ->
-            choice = c
-            choicePost = { choice = null; post(it) }
-        })
-    }
+//    val scope = rememberCoroutineScope()
+//    var builder by remember { mutableStateOf<Character.Builder?>(null) }
+//    val continueBuilder = {
+//        Runtime.getLogger().logMessage(" -> Continuing character builder...")
+//        onCharBuildChoice(scope, cache, builder, { choice = null; builder = null }, { c, post ->
+//            choice = c
+//            choicePost = { choice = null; post(it) }
+//        })
+//    }
 
     Column(Modifier.padding(5.dp)) {
         Row(Modifier.weight(0.75f)) {
@@ -121,7 +120,7 @@ fun mainView(cache: DesktopCache) = Surface {
             }
             Box(Modifier.weight(0.8f).fillMaxHeight()) {
                 if(selected != -1 && selected < characters.size) {
-                    // TODO
+                    CharacterView(characters[selected])
                 }
                 else {
                     Text("Select a character to view their details.", Modifier.align(Alignment.Center))
@@ -170,18 +169,18 @@ fun mainView(cache: DesktopCache) = Surface {
 
     if(creationOpened) {
         CharacterCreationDialog({ creationOpened = false }, { n, r, sr, c, b ->
-            builder = Character(n, r, sr, listOf(Character.CharacterClass(c, 1)), b).Builder()
-            continueBuilder()
+//            builder = Character(n, r, sr, listOf(Character.CharacterClass(c, 1)), b).Builder()
+//            continueBuilder()
         })
     }
 
-    choice?.let {
-        ChoiceDialog(it.title, it.options, it.count) { res ->
-            choice = null
-            Runtime.getLogger().logMessage("Made a choice: ${it.name}")
-            scope.launch { choicePost(res); choice = null }
-        }
-    }
+//    choice?.let {
+//        ChoiceDialog(it.title, it.options, it.count) { res ->
+//            choice = null
+//            Runtime.getLogger().logMessage("Made a choice: ${it.name}")
+//            scope.launch { choicePost(res); choice = null }
+//        }
+//    }
 }
 
 fun main() = application {

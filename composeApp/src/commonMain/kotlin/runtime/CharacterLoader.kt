@@ -10,12 +10,15 @@ import kotlinx.serialization.json.decodeFromJsonElement
 import kotlinx.serialization.json.decodeFromStream
 import kotlinx.serialization.json.encodeToJsonElement
 import kotlinx.serialization.json.encodeToStream
+import runtime.DfsRuntime.Companion.CharacterOrHelpers.Companion.prepare
 import runtime.ast.JsonExt.requireArray
 import runtime.ast.JsonExt.requireInt
 import runtime.ast.JsonExt.requireKey
 import runtime.ast.JsonExt.requireObject
 import runtime.ast.JsonExt.requirePrimitive
 import runtime.ast.JsonExt.requireString
+import runtime.ast.ObjectValue
+import runtime.ast.Pos
 import runtime.ast.RTType
 import runtime.ast.RTType.Companion.toRTT
 import runtime.ast.Value
@@ -58,7 +61,33 @@ object CharacterLoader {
             choiceMap[k] = obj.toValue()
         }
 
-        return Character(name, raceObj, subraceObj, clazz, backgroundObj, choiceMap)
+        val c = Character(name, raceObj, subraceObj, clazz, backgroundObj, choiceMap)
+        Library.character = c
+        Library.choice = object : ChoiceScope {
+                override fun getChoice(name: String): Value? = choiceMap[name]
+                override operator fun invoke(what: ChoiceDesc) = throw ArbitraryRuntimeError("Can't invoke choices while in character loading!")
+                override fun choiceMade(name: String, result: Value) {}
+        }
+
+        val pos = Pos("<runtime>", "ldChar", 0, 0)
+        Runtime.getLogger().logMessage("[LD_CHAR]: Restoring character race (${raceObj.name})...")
+        DfsRuntime.ready(ObjectValue(raceObj, mapOf(), pos), "onSelect", listOf(), pos, c.prepare())
+        DfsRuntime.getInstance().run()
+        if(subraceObj != null) {
+            Runtime.getLogger().logMessage("[LD_CHAR]: Restoring character sub-race (${subraceObj.name})...")
+            DfsRuntime.ready(ObjectValue(subraceObj, mapOf(), pos), "onSelect", listOf(), pos, c.prepare())
+            DfsRuntime.getInstance().run()
+        }
+        clazz.forEach { cl ->
+            Runtime.getLogger().logMessage("[LD_CHAR]: Restoring character class (${cl.clazz.name})...")
+            DfsRuntime.ready(ObjectValue(cl.clazz, mapOf(), pos), "onSelect", listOf(), pos, c.prepare())
+            DfsRuntime.getInstance().run()
+            // TODO: for each level, also call level up
+        }
+        Runtime.getLogger().logMessage("[LD_CHAR]: Restoring character background (${backgroundObj.name})...")
+        DfsRuntime.ready(ObjectValue(backgroundObj, mapOf(), pos), "onSelect", listOf(), pos, c.prepare())
+        DfsRuntime.getInstance().run()
+        return c
     }
 
     suspend fun load(loader: ILoader) {

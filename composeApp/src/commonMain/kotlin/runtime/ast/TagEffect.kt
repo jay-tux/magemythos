@@ -538,6 +538,12 @@ class TagEffect(private val name: String, private val argCount: Int, private val
                 )
             ), listOf())
         }
+
+        val abbrev = TagEffect("@abbrev", 1) { scope, args, at ->
+            scope.requireScope<Ability.AbilityTagScope>(this, at).setAbbrev(
+                evaluate(args[0]).require<StringValue>("string", args[0].pos).value
+            )
+        }
     }
 
     companion object {
@@ -561,7 +567,7 @@ class TagEffect(private val name: String, private val argCount: Int, private val
             yield(Tags.rangedSpellAttack); yield(Tags.rangedSpellDC); yield(Tags.miscSpell)
             yield(Tags.instant); yield(Tags.duration); yield(Tags.castingTime)
             yield(Tags.school); yield(Tags.bgSkills); yield(Tags.bgLanguages)
-            yield(Tags.feature); yield(Tags.bgEquip)
+            yield(Tags.feature); yield(Tags.bgEquip); yield(Tags.abbrev)
         }.associateBy { it.name }
 
         suspend fun applyTag(
