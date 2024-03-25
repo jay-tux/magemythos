@@ -16,5 +16,5 @@ fun checkArgCount(name: String, args: List<Value>, expected: Int, at: Pos) {
 
 fun print(args: List<Value>): Value {
     Runtime.getLogger().logMessage(args.joinToString(" ") { it.toString() })
-    return VoidValue(Pos("<runtime::Library>", 0, 0))
+    return VoidValue(Pos("<runtime>", "<Library>", 0, 0))
 }

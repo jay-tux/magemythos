@@ -183,6 +183,7 @@ class Character(
     }
 
     inner class Builder {
+        val result = this@Character
         private val choices = mutableMapOf<String, Value>()
         private var state = 0
 
@@ -204,7 +205,12 @@ class Character(
         suspend fun run(onChoice: suspend (ChoiceDesc) -> Unit) {
             Runtime.getLogger().logMessage(" -> Running creation (is continuation? ${DfsRuntime.isRunning()})")
             if(state == 4) {
-                Runtime.getLogger().logWarning("   -> Creation already done")
+                // character creation should be complete
+                Runtime.getLogger().logMessage("  -> Character finally finished!")
+                Runtime.getCache().register(result)
+                Runtime.getLogger().logMessage("  -> Character registered.")
+                CharacterLoader.store(Runtime.getStorage())
+                Runtime.getLogger().logMessage("  -> Characters backed up to storage.")
                 return
             }
             if(DfsRuntime.isRunning()) {
@@ -226,6 +232,7 @@ class Character(
 
         fun provideChoice(name: String, result: Value) {
             choices[name] = result
+            this@Character.choices[name] = result
             if(DfsRuntime.isRunning()) DfsRuntime.getInstance().provideChoice(result)
         }
 

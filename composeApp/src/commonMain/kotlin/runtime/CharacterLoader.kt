@@ -81,6 +81,7 @@ object CharacterLoader {
         return JsonObject(mapOf(
             NAME_KEY to JsonPrimitive(c.name.value),
             RACE_KEY to Json.encodeToJsonElement(c.race.value.toRTT()),
+            SUBRACE_KEY to Json.encodeToJsonElement(c.subrace.value?.toRTT()),
             CLASS_KEY to JsonArray(c.clazz.value.map { cls ->
                 JsonObject(mapOf(
                     CLASS_RTT_KEY to Json.encodeToJsonElement(cls.clazz.toRTT()),

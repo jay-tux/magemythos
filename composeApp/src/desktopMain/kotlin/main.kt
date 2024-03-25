@@ -29,6 +29,7 @@ import androidx.compose.ui.window.application
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import runtime.Character
+import runtime.CharacterLoader
 import runtime.ChoiceDesc
 import runtime.DfsRuntime
 import runtime.Runtime
@@ -37,6 +38,7 @@ import runtime.ast.ListValue
 import runtime.ast.Pos
 import runtime.ast.Value
 import ui.CharacterCreationDialog
+import ui.CharacterWidget
 import ui.ChoiceDialog
 import ui.Console
 import ui.cacheLoader
@@ -47,7 +49,7 @@ enum class BottomTab(val show: String) {
     NONE(""), CONSOLE("Console")
 }
 
-fun onChoice(scope: CoroutineScope, builder: Character.Builder?, onFail: () -> Unit, modState: (ChoiceDesc, suspend (List<Value>) -> Unit) -> Unit) {
+fun onChoice(scope: CoroutineScope, cache: DesktopCache, builder: Character.Builder?, onFail: () -> Unit, modState: (ChoiceDesc, suspend (List<Value>) -> Unit) -> Unit) {
     scope.launch {
         try {
             builder?.run { choice ->
@@ -61,10 +63,7 @@ fun onChoice(scope: CoroutineScope, builder: Character.Builder?, onFail: () -> U
                         pass
                     )
                     if(!builder.doneRunning()) {
-                        onChoice(scope, builder, onFail, modState)
-                    }
-                    else {
-                        Runtime.getLogger().logMessage("  -> Character finally finished!")
+                        onChoice(scope, cache, builder, onFail, modState)
                     }
                 }
             }
@@ -88,7 +87,7 @@ fun mainView(cache: DesktopCache) = Surface {
     var builder by remember { mutableStateOf<Character.Builder?>(null) }
     val continueBuilder = {
         Runtime.getLogger().logMessage(" -> Continuing character builder...")
-        onChoice(scope, builder, { choice = null; builder = null }, { c, post ->
+        onChoice(scope, cache, builder, { choice = null; builder = null }, { c, post ->
             choice = c
             choicePost = { choice = null; post(it) }
         })
@@ -103,17 +102,7 @@ fun mainView(cache: DesktopCache) = Surface {
                     } else {
                         LazyColumn {
                             items(characters.size) {
-                                Button(
-                                    { selected = it },
-                                    Modifier.fillMaxWidth(),
-                                    colors = ButtonDefaults.buttonColors(
-                                        containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                                        contentColor = MaterialTheme.colorScheme.onSecondaryContainer
-                                    ),
-                                    shape = MaterialTheme.shapes.extraSmall
-                                ) {
-                                    // TODO
-                                }
+                                CharacterWidget(characters[it], selected == it) { selected = if(selected == it) -1 else it }
                             }
                         }
                     }
@@ -197,7 +186,7 @@ fun mainView(cache: DesktopCache) = Surface {
 
 fun main() = application {
     val cache = DesktopCache()
-    Runtime.initialize(cache, cache)
+    Runtime.initialize(cache)
     Window(onCloseRequest = ::exitApplication, title = "MageMythos") {
         MageMythosTheme(true) {
             val scope = rememberCoroutineScope()

@@ -29,6 +29,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import runtime.Character
 
 @Composable
 fun indented(indent: Int, content: @Composable () -> Unit) = Row {
@@ -87,6 +88,24 @@ fun nameDescButton(name: String, desc: String, selected: Boolean = false, modifi
                     Text("Select $name")
                 }
             }
+        }
+    }
+}
+
+@Composable
+fun CharacterWidget(char: Character, selected: Boolean, onClick: () -> Unit) {
+    val name by char.name
+    val race by char.race
+    val subrace by char.subrace
+    val classes by char.clazz
+
+    Surface(
+        Modifier.clickable { onClick() },
+        color = if(selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondaryContainer
+    ) {
+        Column {
+            Text(name, style = MaterialTheme.typography.bodyLarge)
+            Text("Level ${classes.sumOf { it.level }} ${subrace?.displayName ?: race.displayName}", style = MaterialTheme.typography.bodySmall)
         }
     }
 }

@@ -25,7 +25,7 @@ import runtime.typesOfKind
 fun Character.readyChar(fName: String, args: List<Value>, argCount: Int, pos: Pos, body: Character.(List<Value>, Pos) -> Value): Value {
     checkArgCount(fName, args, argCount, pos)
     Runtime.getLogger().logMessage("[CHARSCOPE]: Calling $fName (${args.size}/$argCount args) at $pos")
-    return body(args, Pos("<library::$fName>", 0, 0))
+    return body(args, Pos("<library>", "<$fName>", 0, 0))
 }
 
 fun Character.getAbility(argsPre: List<Value>, at: Pos): Value = readyChar("getAbility", argsPre, 1, at) { args, pos ->

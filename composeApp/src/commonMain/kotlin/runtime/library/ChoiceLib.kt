@@ -27,7 +27,7 @@ fun ChoiceScope.ready(fName: String, args: List<Value>, argCount: Int, at: Pos, 
     checkArgCount(fName, args, argCount, at)
     Runtime.getLogger().logMessage("[CHOICESCOPE]: Calling $fName (${args.size}/$argCount args) at $at")
     val cName = args[0].require<StringValue>("string", at).value
-    return getChoice(cName)?.left() ?: choiceNotMade(cName, Pos("<library::$fName>", 0, 0), args).right()
+    return getChoice(cName)?.left() ?: choiceNotMade(cName, Pos("<library>","<$fName>", 0, 0), args).right()
 }
 
 fun ChoiceScope.choose(argsPre: List<Value>, at: Pos) = ready("choose", argsPre, 3, at) { name, pos, args ->

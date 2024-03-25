@@ -1,4 +1,6 @@
 import androidx.compose.runtime.mutableStateListOf
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import runtime.ICache
 import runtime.Type
 import runtime.ast.FunDeclaration
@@ -59,7 +61,14 @@ class DesktopCache : LocalStorage, ICache, ILogger, ILoader, IStorage {
     override suspend fun loadCharacterList(): InputStream {
         val base = characterCache()
         return try {
-            File("$base/.cache.json").inputStream()
+            val f = File("$base/.cache.json")
+            if(!f.exists()) {
+                withContext(Dispatchers.IO) {
+                    f.createNewFile()
+                    f.writeText("[]")
+                }
+            }
+            f.inputStream()
         } catch (e: Exception) {
             throw FileLoadingError("$base/.cache.json")
         }
@@ -96,33 +105,6 @@ class DesktopCache : LocalStorage, ICache, ILogger, ILoader, IStorage {
         private const val APP_TAG = "mageMythos"
         private const val CACHE_DIR = "cacheDir"
         private const val CHAR_CACHE = "characters"
-
-        fun mkProvider(base: String) = { src: String, file: String ->
-            println("[Provider]: $src($file) -> $base/$src/$file.mm")
-
-            val sourceStream = try {
-                File("$base/$src/$file.mm").inputStream()
-            } catch (e: Exception) {
-                throw SourceLoadingError(src, file, "$base/$src/$file.mm")
-            }
-
-            val descStream = try {
-                File("$base/$src/$file.mmstr").inputStream()
-            } catch (e: Exception) {
-                throw DescLoadingError(src, file, "$base/$src/$file.mmstr")
-            }
-
-            Streams(sourceStream, descStream)
-        }
-
-        fun mkLoader() = { path: String ->
-            println("[Loader]: Loading $path")
-            try {
-                File(path).inputStream()
-            } catch (e: Exception) {
-                throw FileLoadingError(path)
-            }
-        }
     }
 
     val types = mutableMapOf<String, Type>()
